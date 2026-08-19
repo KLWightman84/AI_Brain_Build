@@ -9,7 +9,7 @@ This record identifies the first clean-rebuild RKLLM artifact. The binary is **n
 | Filename | `Qwen3.5-4B_w8a8_rk3588_ctx4096.rkllm` |
 | Size | 5.2 GiB (displayed size) |
 | SHA-256 | `f733cb8acc42fc8ce486c965f673da7918fbc1a1a6ae22c7991e389c34963056` |
-| Status | Conversion succeeded; Pi load/inference acceptance is still pending |
+| Status | Pi initialization and one synchronous prompt passed; stability and service gates remain |
 
 ## Conversion contract
 
@@ -34,9 +34,17 @@ The official v1.3.0 Qwen3.5 preparation script produced `data/llm_inputs.json` f
 
 RKLLM emitted the expected notice that it exports `Qwen3_5ForCausalLM` from the vision-capable `Qwen3_5ForConditionalGeneration` source. This artifact is therefore the language model used for DAWN; no vision runtime is part of the current clean rebuild.
 
+## Pi acceptance evidence
+
+- SHA-256 matched after direct local-network transfer to `/srv/aibrain/test/models/`.
+- On the Orange Pi 5 Plus, RKLLM Runtime 1.3.0 accepted the artifact with RKNPU driver 0.9.7, `max_context_limit: 4096`, `npu_core_num: 3`, and `model_dtype: W8A8`.
+- The load-only smoke test passed and released the native handle cleanly.
+- The first stateless prompt test returned exactly `READY`, reported completion, and released the native handle cleanly.
+
 ## Required next acceptance gates
 
-1. Transfer to the Pi **test** model tree and verify SHA-256.
-2. Initialize with the v1.3.0 ARM64 runtime under the `ai_brain` account.
-3. Run single inference, repeated inference, memory-plateau, shutdown/restart, and reboot acceptance tests.
-4. Promote only after those gates pass; do not use this artifact as production solely because conversion succeeded.
+1. Run repeated inference and establish a memory plateau.
+2. Test oversized-context recovery.
+3. Test clean manual restart, then a systemd-managed restart and real reboot.
+4. Add the loopback-only DAWN service endpoint and test non-streaming and streaming requests.
+5. Promote only after all gates pass; do not use this artifact as production solely because these first gates succeeded.
