@@ -9,7 +9,7 @@ This record identifies the first clean-rebuild RKLLM artifact. The binary is **n
 | Filename | `Qwen3.5-4B_w8a8_rk3588_ctx4096.rkllm` |
 | Size | 5.2 GiB (displayed size) |
 | SHA-256 | `f733cb8acc42fc8ce486c965f673da7918fbc1a1a6ae22c7991e389c34963056` |
-| Status | Pi initialization and one synchronous prompt passed; stability and service gates remain |
+| Status | Pi initialization, first prompt, and 100-request memory-plateau tests passed; recovery and service gates remain |
 
 ## Conversion contract
 
@@ -40,11 +40,11 @@ RKLLM emitted the expected notice that it exports `Qwen3_5ForCausalLM` from the 
 - On the Orange Pi 5 Plus, RKLLM Runtime 1.3.0 accepted the artifact with RKNPU driver 0.9.7, `max_context_limit: 4096`, `npu_core_num: 3`, and `model_dtype: W8A8`.
 - The load-only smoke test passed and released the native handle cleanly.
 - The first stateless prompt test returned exactly `READY`, reported completion, and released the native handle cleanly.
+- The 100-request stateless repeat test returned `READY` for both the first and last request in 104.216 seconds. RSS was 4,799,824 KiB after initialization and 4,822,716 KiB at final/peak (about +22 MiB); the final 20-request range was 0 KiB. The handle released cleanly. Its JSON report remains test-only at `/srv/aibrain/test/logs/rkllm-repeat-001.json`.
 
 ## Required next acceptance gates
 
-1. Run repeated inference and establish a memory plateau.
-2. Test oversized-context recovery.
-3. Test clean manual restart, then a systemd-managed restart and real reboot.
-4. Add the loopback-only DAWN service endpoint and test non-streaming and streaming requests.
-5. Promote only after all gates pass; do not use this artifact as production solely because these first gates succeeded.
+1. Test oversized-context recovery.
+2. Test clean manual restart, then a systemd-managed restart and real reboot.
+3. Add the loopback-only DAWN service endpoint and test non-streaming and streaming requests.
+4. Promote only after all gates pass; do not use this artifact as production solely because these test gates succeeded.
