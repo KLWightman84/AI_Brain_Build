@@ -76,6 +76,23 @@ endif()
 
 """
 
+DAWN_STAGE3_SUPPORT_SOURCES = """# Server-only support for archive subsystems that DAWN calls unconditionally.
+# Each is either a fail-closed replacement for an intentionally absent runtime
+# (Silero VAD) or a lightweight local implementation needed by a compiled
+# archive source.  None enables a user-facing feature in this stage.
+set(DAWN_STAGE3_SUPPORT_SOURCES
+    src/asr/vad_silero_stub.c
+    src/core/stage3_text_cleanup_stub.c
+    src/memory/contacts_db.c
+    src/tools/calendar_db.c)
+
+"""
+
+DAWN_SOURCES_WITH_STAGE3_SUPPORT = """# Base source files (always compiled)
+set(DAWN_SOURCES
+    ${DAWN_STAGE3_SUPPORT_SOURCES}
+"""
+
 TTS_LINK_BLOCK = """target_link_libraries(dawn
                       dawn_common
                       dawn_common_vad
@@ -164,6 +181,109 @@ const embedding_provider_t embedding_provider_onnx = {
     .cleanup = onnx_cleanup,
     .embed = onnx_embed,
 };
+"""
+
+VAD_STUB = """/*
+ * Stage-3 server-only Silero VAD stub.
+ *
+ * VAD requires ONNX Runtime, which is intentionally absent in this stage.
+ * Returning NULL causes DAWN's existing fallback path to run without VAD.
+ */
+#include "asr/vad_silero.h"
+
+#include <stddef.h>
+
+silero_vad_context_t *vad_silero_init(const char *model_path, void *shared_env) {
+    (void)model_path;
+    (void)shared_env;
+    return NULL;
+}
+
+void vad_silero_set_probability_callback(silero_vad_context_t *ctx,
+                                         vad_probability_callback_t callback,
+                                         void *user_data) {
+    (void)ctx;
+    (void)callback;
+    (void)user_data;
+}
+
+float vad_silero_process(silero_vad_context_t *ctx,
+                         const int16_t *audio_samples,
+                         size_t num_samples) {
+    (void)ctx;
+    (void)audio_samples;
+    (void)num_samples;
+    return -1.0f;
+}
+
+void vad_silero_reset(silero_vad_context_t *ctx) {
+    (void)ctx;
+}
+
+void vad_silero_cleanup(silero_vad_context_t *ctx) {
+    (void)ctx;
+}
+"""
+
+TEXT_CLEANUP_STUB = """/*
+ * Stage-3 text cleanup helpers.
+ *
+ * TTS is disabled, but archive DAWN still invokes these helpers on the
+ * inactive TTS callback path.  Keep the ordinary character filter and leave
+ * UTF-8 text unchanged rather than depending on the native TTS utility stack.
+ */
+#include <stddef.h>
+#include <string.h>
+
+void remove_chars(char *text, const char *characters) {
+    if (text == NULL || characters == NULL) {
+        return;
+    }
+    char *write = text;
+    for (char *read = text; *read != '\\0'; ++read) {
+        if (strchr(characters, *read) == NULL) {
+            *write++ = *read;
+        }
+    }
+    *write = '\\0';
+}
+
+void remove_emojis(char *text) {
+    (void)text;
+}
+"""
+
+TOOLS_INIT_RECALL_INCLUDE = '#include "tools/recall_tool.h"\n'
+
+TOOLS_INIT_RECALL_INCLUDE_GATE = """#ifdef DAWN_ENABLE_RECALL_TOOL
+#include "tools/recall_tool.h"
+#endif
+"""
+
+TOOLS_INIT_RECALL_REGISTRATION = """   /* Unified cross-source recall — aggregates whatever focus adapters are
+    * registered (memory/notes/documents/calendar).  Registered unconditionally;
+    * recall_is_available() gates at runtime on the embedding engine. */
+   if (recall_tool_register() != 0) {
+      OLOG_WARNING("Failed to register recall tool");
+   }
+
+"""
+
+TOOLS_INIT_RECALL_REGISTRATION_GATE = """#ifdef DAWN_ENABLE_RECALL_TOOL
+   if (recall_tool_register() != 0) {
+      OLOG_WARNING("Failed to register recall tool");
+   }
+#endif
+
+"""
+
+ATTENTION_SESSION_BROADCAST = "      session_broadcast_system_message(note);\n"
+
+ATTENTION_SESSION_BROADCAST_GATE = """#ifdef ENABLE_MULTI_CLIENT
+      session_broadcast_system_message(note);
+#else
+      (void)note;
+#endif
 """
 
 TTS_STUB = """/*
@@ -283,7 +403,7 @@ def gate_native_tts(source_root: Path) -> None:
     stub_path.write_text(TTS_STUB, encoding="utf-8")
 
 
-def stub_onnx_embeddings(source_root: Path) -> None:
+def add_stage3_support(source_root: Path) -> None:
     cmake_lists = source_root / "CMakeLists.txt"
     _replace_once(
         cmake_lists,
@@ -291,9 +411,51 @@ def stub_onnx_embeddings(source_root: Path) -> None:
         ONNX_EMBED_STUB_SOURCE,
         "ONNX embedding source",
     )
+    _replace_once(
+        cmake_lists,
+        DAWN_SOURCES_ANCHOR,
+        DAWN_SOURCES_WITH_STAGE3_SUPPORT,
+        "DAWN source-list support anchor",
+    )
 
-    stub_path = source_root / "src" / "memory" / "memory_embed_onnx_stub.c"
-    stub_path.write_text(ONNX_EMBED_STUB, encoding="utf-8")
+    (source_root / "src" / "memory" / "memory_embed_onnx_stub.c").write_text(
+        ONNX_EMBED_STUB, encoding="utf-8"
+    )
+    (source_root / "src" / "asr" / "vad_silero_stub.c").write_text(
+        VAD_STUB, encoding="utf-8"
+    )
+    (source_root / "src" / "core" / "stage3_text_cleanup_stub.c").write_text(
+        TEXT_CLEANUP_STUB, encoding="utf-8"
+    )
+
+    tools_init = source_root / "src" / "tools" / "tools_init.c"
+    _replace_once(
+        tools_init,
+        TOOLS_INIT_RECALL_INCLUDE,
+        TOOLS_INIT_RECALL_INCLUDE_GATE,
+        "Recall include",
+    )
+    _replace_once(
+        tools_init,
+        TOOLS_INIT_RECALL_REGISTRATION,
+        TOOLS_INIT_RECALL_REGISTRATION_GATE,
+        "Recall registration",
+    )
+
+    llm_tool_loop = source_root / "src" / "llm" / "llm_tool_loop.c"
+    loop_text = llm_tool_loop.read_text(encoding="utf-8")
+    llm_tool_loop.write_text(
+        loop_text.replace("session_get_for_reconnect(", "session_get("),
+        encoding="utf-8",
+    )
+
+    attention_core = source_root / "src" / "core" / "attention" / "attention_core.c"
+    _replace_once(
+        attention_core,
+        ATTENTION_SESSION_BROADCAST,
+        ATTENTION_SESSION_BROADCAST_GATE,
+        "attention session broadcast",
+    )
 
 
 def prepare_source(reference: Path, destination: Path) -> None:
@@ -305,7 +467,7 @@ def prepare_source(reference: Path, destination: Path) -> None:
     shutil.copytree(reference, destination, ignore=_ignore_archive_residue)
     gate_recall_tool(destination)
     gate_native_tts(destination)
-    stub_onnx_embeddings(destination)
+    add_stage3_support(destination)
 
 
 def parse_args() -> argparse.Namespace:
