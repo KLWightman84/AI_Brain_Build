@@ -96,6 +96,20 @@ target_link_libraries(dawn
                       pthread
 """
 
+PIPER_INCLUDE_BLOCK = """target_include_directories(piper PUBLIC
+                           /usr/local/include/piper-phonemize
+                           ${SPDLOG_INCLUDE_DIRS}
+                           /usr/local/include/onnxruntime/)
+"""
+
+PIPER_INCLUDE_GATE = """if(TARGET piper)
+    target_include_directories(piper PUBLIC
+                               /usr/local/include/piper-phonemize
+                               ${SPDLOG_INCLUDE_DIRS}
+                               /usr/local/include/onnxruntime/)
+endif()
+"""
+
 TTS_STUB = """/*
  * Stage-3 server-only TTS stub.
  *
@@ -201,6 +215,9 @@ def gate_native_tts(source_root: Path) -> None:
     _replace_once(cmake_lists, PIPER_BUILD_BLOCK, PIPER_BUILD_GATE, "Piper build block")
     _replace_once(cmake_lists, TTS_SOURCE_BLOCK, TTS_SOURCE_GATE, "TTS source block")
     _replace_once(cmake_lists, TTS_LINK_BLOCK, TTS_LINK_GATE, "TTS link block")
+    _replace_once(
+        cmake_lists, PIPER_INCLUDE_BLOCK, PIPER_INCLUDE_GATE, "Piper include block"
+    )
 
     stub_path = source_root / "src" / "tts" / "text_to_speech_stub.c"
     stub_path.write_text(TTS_STUB, encoding="utf-8")
