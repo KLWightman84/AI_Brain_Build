@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "Clean RKLLM service for AI Brain on RK3588"
 requires-python = ">=3.12"
 dependencies = [
-  "Flask==2.2.2",
-  "Werkzeug==2.2.2",
+  "Flask==3.1.2",
+  "Werkzeug==3.1.4",
   "Jinja2==3.1.6",
   "click==8.4.2",
   "itsdangerous==2.2.0",
