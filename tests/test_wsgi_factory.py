@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from aibrain_rkllm.wsgi_factory import (
@@ -33,11 +35,14 @@ def test_wsgi_factory_loads_one_backend_with_fixed_service_config() -> None:
     )
 
     assert backend.model_id == "rkllm"
-    assert seen == [("/tmp/runtime.so", "/tmp/model.rkllm")]
+    assert seen == [(Path("/tmp/runtime.so"), Path("/tmp/model.rkllm"))]
     assert app.test_client().get("/healthz").status_code == 200
 
 
-@pytest.mark.parametrize("environment, variable", [({}, LIBRARY_ENV), ({LIBRARY_ENV: "/x"}, MODEL_ENV)])
+@pytest.mark.parametrize(
+    "environment, variable",
+    [({}, LIBRARY_ENV), ({LIBRARY_ENV: "/x"}, MODEL_ENV)],
+)
 def test_wsgi_factory_requires_both_runtime_paths(environment, variable) -> None:
     with pytest.raises(RuntimeError, match=variable):
         build_wsgi_application(environment, backend_loader=lambda *_: FakeBackend())
