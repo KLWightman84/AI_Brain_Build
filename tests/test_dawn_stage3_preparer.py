@@ -12,6 +12,9 @@ from tools.prepare_dawn_stage3_source import (  # noqa: E402
     PIPER_BUILD_GATE,
     ONNX_EMBED_SOURCE,
     ONNX_EMBED_STUB_SOURCE,
+    DAWN_SOURCES_WITH_STAGE3_SUPPORT,
+    TEXT_CLEANUP_STUB,
+    VAD_STUB,
     PIPER_INCLUDE_BLOCK,
     PIPER_INCLUDE_GATE,
     RECALL_BLOCK,
@@ -50,6 +53,26 @@ def _write_minimal_reference(reference: Path) -> None:
     )
     (reference / "src" / "tts").mkdir(parents=True)
     (reference / "src" / "memory").mkdir(parents=True)
+    (reference / "src" / "asr").mkdir(parents=True)
+    (reference / "src" / "core" / "attention").mkdir(parents=True)
+    (reference / "src" / "tools").mkdir(parents=True)
+    (reference / "src" / "tools" / "tools_init.c").write_text(
+        '#include "tools/recall_tool.h"\n'
+        '   /* Unified cross-source recall — aggregates whatever focus adapters are\n'
+        '    * registered (memory/notes/documents/calendar).  Registered unconditionally;\n'
+        '    * recall_is_available() gates at runtime on the embedding engine. */\n'
+        '   if (recall_tool_register() != 0) {\n'
+        '      OLOG_WARNING("Failed to register recall tool");\n'
+        '   }\n\n',
+        encoding="utf-8",
+    )
+    (reference / "src" / "llm").mkdir(parents=True)
+    (reference / "src" / "llm" / "llm_tool_loop.c").write_text(
+        "session_get_for_reconnect(0);\n", encoding="utf-8"
+    )
+    (reference / "src" / "core" / "attention" / "attention_core.c").write_text(
+        "      session_broadcast_system_message(note);\n", encoding="utf-8"
+    )
 
 
 def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> None:
@@ -71,6 +94,7 @@ def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> Non
     prepared_cmake = (destination / "CMakeLists.txt").read_text(encoding="utf-8")
     assert PIPER_BUILD_GATE in prepared_cmake
     assert TTS_SOURCE_VARIABLES in prepared_cmake
+    assert DAWN_SOURCES_WITH_STAGE3_SUPPORT in prepared_cmake
     assert TTS_SOURCE_LIST in prepared_cmake
     assert TTS_LINK_GATE in prepared_cmake
     assert PIPER_INCLUDE_GATE in prepared_cmake
@@ -92,6 +116,19 @@ def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> Non
     assert "int text_to_speech_to_wav(" in stub
     assert "pthread_cond_t tts_cond =" not in stub
     assert "pthread_mutex_t tts_mutex =" not in stub
+    assert (destination / "src" / "asr" / "vad_silero_stub.c").read_text(
+        encoding="utf-8"
+    ) == VAD_STUB
+    assert (destination / "src" / "core" / "stage3_text_cleanup_stub.c").read_text(
+        encoding="utf-8"
+    ) == TEXT_CLEANUP_STUB
+    prepared_tools_init = (destination / "src" / "tools" / "tools_init.c").read_text(
+        encoding="utf-8"
+    )
+    assert "#ifdef DAWN_ENABLE_RECALL_TOOL" in prepared_tools_init
+    assert "session_get_for_reconnect(" not in (
+        destination / "src" / "llm" / "llm_tool_loop.c"
+    ).read_text(encoding="utf-8")
 
     assert not (destination / "secrets.toml.generated").exists()
     assert not (destination / "old.before-stage3").exists()
