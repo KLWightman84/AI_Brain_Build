@@ -17,7 +17,8 @@ from tools.prepare_dawn_stage3_source import (  # noqa: E402
     TTS_LINK_BLOCK,
     TTS_LINK_GATE,
     TTS_SOURCE_BLOCK,
-    TTS_SOURCE_GATE,
+    TTS_SOURCE_LIST,
+    TTS_SOURCE_VARIABLES,
     prepare_source,
 )
 
@@ -64,7 +65,8 @@ def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> Non
 
     prepared_cmake = (destination / "CMakeLists.txt").read_text(encoding="utf-8")
     assert PIPER_BUILD_GATE in prepared_cmake
-    assert TTS_SOURCE_GATE in prepared_cmake
+    assert TTS_SOURCE_VARIABLES in prepared_cmake
+    assert TTS_SOURCE_LIST in prepared_cmake
     assert TTS_LINK_GATE in prepared_cmake
     assert PIPER_INCLUDE_GATE in prepared_cmake
     assert PIPER_BUILD_BLOCK not in prepared_cmake
