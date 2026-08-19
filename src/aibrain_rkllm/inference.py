@@ -27,6 +27,11 @@ class PromptResponseCollector:
     finished: bool = False
     errored: bool = False
 
+    def reset(self) -> None:
+        self.pieces.clear()
+        self.finished = False
+        self.errored = False
+
     def __call__(self, result: ctypes.POINTER(RKLLMResult), state: int) -> int:
         if state == RKLLM_RUN_NORMAL and result and result.contents.text:
             self.pieces.append(result.contents.text.decode("utf-8", errors="replace"))
