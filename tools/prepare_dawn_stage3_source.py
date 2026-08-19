@@ -281,29 +281,29 @@ ATTENTION_SESSION_BROADCAST_GATE = """#ifdef ENABLE_MULTI_CLIENT
 """
 
 DAWN_STAGE3_HELP_ANCHOR = (
-    '   printf("  --server               Server mode: no local audio, WebUI + satellites only.\\n");\\n'
+    '   printf("  --server               Server mode: no local audio, WebUI + satellites only.\\n");\n'
 )
 
 DAWN_STAGE3_HELP_LINE = (
-    '   printf("  --stage3-prompt TEXT   Run one test-only local LLM completion and exit.\\n");\\n'
+    '   printf("  --stage3-prompt TEXT   Run one test-only local LLM completion and exit.\\n");\n'
 )
 
 DAWN_STAGE3_LONG_OPTION = (
-    '      { "server", no_argument, NULL, 262 },                     // Server mode (no local audio)\\n'
+    '      { "server", no_argument, NULL, 262 },                     // Server mode (no local audio)\n'
 )
 
 DAWN_STAGE3_LONG_OPTION_REPLACEMENT = (
-    '      { "server", no_argument, NULL, 262 },                     // Server mode (no local audio)\\n'
-    '      { "stage3-prompt", required_argument, NULL, 263 },       // Test-only local LLM probe\\n'
+    '      { "server", no_argument, NULL, 262 },                     // Server mode (no local audio)\n'
+    '      { "stage3-prompt", required_argument, NULL, 263 },       // Test-only local LLM probe\n'
 )
 
 DAWN_STAGE3_CONFIG_VARIABLE = (
-    '   const char *config_path = NULL;  // Explicit config file path from --config\\n'
+    '   const char *config_path = NULL;  // Explicit config file path from --config\n'
 )
 
 DAWN_STAGE3_CONFIG_VARIABLE_REPLACEMENT = (
-    '   const char *config_path = NULL;  // Explicit config file path from --config\\n'
-    '   const char *stage3_prompt = NULL;  // Test-only single local LLM completion\\n'
+    '   const char *config_path = NULL;  // Explicit config file path from --config\n'
+    '   const char *stage3_prompt = NULL;  // Test-only single local LLM completion\n'
 )
 
 DAWN_STAGE3_SERVER_CASE = """         case 262:  // --server
