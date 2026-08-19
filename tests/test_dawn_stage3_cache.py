@@ -36,6 +36,7 @@ def test_minimal_dawn_stage3_cache_disables_every_legacy_tool() -> None:
         "DAWN_ENABLE_HOMEASSISTANT_TOOL",
         "DAWN_ENABLE_SMARTTHINGS_TOOL",
         "DAWN_ENABLE_MEMORY_TOOL",
+        "DAWN_ENABLE_RECALL_TOOL",
         "DAWN_ENABLE_DATETIME_TOOL",
         "DAWN_ENABLE_VOLUME_TOOL",
         "DAWN_ENABLE_LLM_STATUS_TOOL",
