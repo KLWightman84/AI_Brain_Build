@@ -8,7 +8,7 @@ Prove one narrow path:
 DAWN (server-only, no tools) → 127.0.0.1:8081 → RKLLM 4B → valid reply
 ```
 
-This is not a DAWN production deployment.  Do not enable WebUI, local audio,
+This is not a DAWN production deployment. Do not enable WebUI, local audio,
 AEC, STT, wake word, Piper, deterministic tools, memory, scheduling, cloud
 providers, or external integrations during this stage.
 
@@ -16,21 +16,34 @@ providers, or external integrations during this stage.
 
 The preserved DAWN source records original upstream
 `The-OASIS-Project/dawn` at
-`63ef6de2feb6c8463b64c91d2f0cae596e4e2b17`.  That commit has been removed
-from the upstream server and cannot be fetched.  The immutable archive copy
+`63ef6de2feb6c8463b64c91d2f0cae596e4e2b17`. That commit has been removed
+from the upstream server and cannot be fetched. The immutable archive copy
 under `/srv/aibrain/test/AI-clean-slate-reference/dawn/source` is therefore
 the only exact source reference.
 
 A current upstream checkout may be used only as an unapproved comparison
-candidate.  It must not silently replace the archived source or become a
+candidate. It must not silently replace the archived source or become a
 production dependency.
+
+## Test-source preparation
+
+Never configure or modify the archived source directly after the initial
+compatibility inventory. Use
+`tools/prepare_dawn_stage3_source.py` to copy it to a distinct directory under
+`/srv/aibrain/test/builds/`. The preparer excludes backup, experiment, and
+secret-like residue and makes one reviewed source change: it adds
+`DAWN_ENABLE_RECALL_TOOL` around the archive's otherwise unconditional Recall
+tool compilation.
+
+The archive stays unchanged; the generated test source is disposable.
 
 ## Build contract
 
-Use `cmake/dawn-stage3-minimal.cmake` as an initial cache.  It sets
-`SERVER_ONLY=ON`, disables all optional user interfaces and audio extras, and
-disables every legacy DAWN tool at compile time.  The CMake build directory
-must remain below `/srv/aibrain/test/builds/`.
+Use `cmake/dawn-stage3-minimal.cmake` as an initial cache against the
+generated test source. It sets `SERVER_ONLY=ON`, disables all optional user
+interfaces and audio extras, and disables every legacy DAWN tool at compile
+time. The CMake build directory must remain below
+`/srv/aibrain/test/builds/`.
 
 The accepted RKLLM gateway remains:
 
