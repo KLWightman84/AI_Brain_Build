@@ -9,7 +9,7 @@ This record identifies the first clean-rebuild RKLLM artifact. The binary is **n
 | Filename | `Qwen3.5-4B_w8a8_rk3588_ctx4096.rkllm` |
 | Size | 5.2 GiB (displayed size) |
 | SHA-256 | `f733cb8acc42fc8ce486c965f673da7918fbc1a1a6ae22c7991e389c34963056` |
-| Status | Pi initialization, prompt, repeat-stability, oversized-context recovery, and native reinitialization passed; reboot and service gates remain |
+| Status | All native-runtime gates passed; loopback service and systemd gates remain |
 
 ## Conversion contract
 
@@ -43,9 +43,9 @@ RKLLM emitted the expected notice that it exports `Qwen3_5ForCausalLM` from the 
 - The 100-request stateless repeat test returned `READY` for both the first and last request in 104.216 seconds. RSS was 4,799,824 KiB after initialization and 4,822,716 KiB at final/peak (about +22 MiB); the final 20-request range was 0 KiB. The handle released cleanly. Its JSON report remains test-only at `/srv/aibrain/test/logs/rkllm-repeat-001.json`.
 - The oversized-context recovery gate deliberately sent 6,012 tokens against the 4,096-token limit. RKLLM rejected it with a native context-length error; the same loaded model then returned `READY` to a new short request and released cleanly. Its JSON report remains test-only at `/srv/aibrain/test/logs/rkllm-oversize-recovery-001.json`.
 - The native reinitialization gate completed three successive load → prompt → release cycles. Every cycle returned `READY`; each native handle reported a first, successful release. Its JSON report remains test-only at `/srv/aibrain/test/logs/rkllm-reinitialize-001.json`.
+- After a real reboot, the system returned to Ubuntu on `/dev/mmcblk0p1`, mounted `/srv/aibrain` from `/dev/nvme0n1p1`, and completed a fresh RKLLM `READY` prompt with a clean release.
 
 ## Required next acceptance gates
 
-1. Reboot the Orange Pi, confirm eMMC root and NVMe mount, then rerun a fresh RKLLM prompt smoke test.
-2. Add the loopback-only DAWN service endpoint and test non-streaming and streaming requests, including a systemd-managed restart.
-3. Promote only after all gates pass; do not use this artifact as production solely because these test gates succeeded.
+1. Add the loopback-only DAWN service endpoint and test non-streaming and streaming requests, including a systemd-managed restart.
+2. Promote only after all gates pass; do not use this artifact as production solely because these test gates succeeded.
