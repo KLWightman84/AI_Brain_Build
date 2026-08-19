@@ -10,6 +10,8 @@ sys.path.insert(0, str(ROOT))
 from tools.prepare_dawn_stage3_source import (  # noqa: E402
     PIPER_BUILD_BLOCK,
     PIPER_BUILD_GATE,
+    PIPER_INCLUDE_BLOCK,
+    PIPER_INCLUDE_GATE,
     RECALL_BLOCK,
     RECALL_GATE,
     TTS_LINK_BLOCK,
@@ -36,6 +38,7 @@ def _write_minimal_reference(reference: Path) -> None:
                 ")",
                 TTS_LINK_BLOCK,
                 "                      suffix)",
+                PIPER_INCLUDE_BLOCK,
             ]
         ),
         encoding="utf-8",
@@ -63,9 +66,11 @@ def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> Non
     assert PIPER_BUILD_GATE in prepared_cmake
     assert TTS_SOURCE_GATE in prepared_cmake
     assert TTS_LINK_GATE in prepared_cmake
+    assert PIPER_INCLUDE_GATE in prepared_cmake
     assert PIPER_BUILD_BLOCK not in prepared_cmake
     assert TTS_SOURCE_BLOCK not in prepared_cmake
     assert TTS_LINK_BLOCK not in prepared_cmake
+    assert PIPER_INCLUDE_BLOCK not in prepared_cmake
     stub = (destination / "src" / "tts" / "text_to_speech_stub.c").read_text(
         encoding="utf-8"
     )
