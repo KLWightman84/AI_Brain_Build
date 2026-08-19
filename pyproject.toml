@@ -16,5 +16,8 @@ dependencies = [
   "MarkupSafe==3.0.3",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest==8.3.5"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
