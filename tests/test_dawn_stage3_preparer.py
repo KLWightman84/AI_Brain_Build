@@ -13,6 +13,12 @@ from tools.prepare_dawn_stage3_source import (  # noqa: E402
     ONNX_EMBED_SOURCE,
     ONNX_EMBED_STUB_SOURCE,
     DAWN_SOURCES_WITH_STAGE3_SUPPORT,
+    DAWN_STAGE3_CONFIG_VARIABLE,
+    DAWN_STAGE3_HELP_LINE,
+    DAWN_STAGE3_HELP_ANCHOR,
+    DAWN_STAGE3_LLM_INIT,
+    DAWN_STAGE3_LONG_OPTION,
+    DAWN_STAGE3_SERVER_CASE,
     TEXT_CLEANUP_STUB,
     VAD_STUB,
     PIPER_INCLUDE_BLOCK,
@@ -72,6 +78,14 @@ def _write_minimal_reference(reference: Path) -> None:
     )
     (reference / "src" / "core" / "attention" / "attention_core.c").write_text(
         "      session_broadcast_system_message(note);\n", encoding="utf-8"
+    )
+    (reference / "src" / "dawn.c").write_text(
+        DAWN_STAGE3_HELP_ANCHOR
+        + DAWN_STAGE3_LONG_OPTION
+        + DAWN_STAGE3_CONFIG_VARIABLE
+        + DAWN_STAGE3_SERVER_CASE
+        + DAWN_STAGE3_LLM_INIT,
+        encoding="utf-8",
     )
 
 
@@ -136,6 +150,12 @@ def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> Non
     assert "session_get_for_reconnect(" not in (
         destination / "src" / "llm" / "llm_tool_loop.c"
     ).read_text(encoding="utf-8")
+
+    prepared_dawn = (destination / "src" / "dawn.c").read_text(encoding="utf-8")
+    assert DAWN_STAGE3_HELP_LINE in prepared_dawn
+    assert 'case 263:  // --stage3-prompt' in prepared_dawn
+    assert "llm_chat_completion(stage3_history, stage3_prompt" in prepared_dawn
+    assert "DAWN Stage-3 RKLLM response:" in prepared_dawn
 
     assert not (destination / "secrets.toml.generated").exists()
     assert not (destination / "old.before-stage3").exists()
