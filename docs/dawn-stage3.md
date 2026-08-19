@@ -40,10 +40,13 @@ only two reviewed changes in the generated copy:
 2. When `DAWN_ENABLE_TTS_TOOL=OFF`, replaces DAWN's unconditional native TTS
    sources with a no-op implementation and removes Piper, piper-phonemize,
    eSpeak, and ONNX Runtime from its link dependencies.
+3. Replaces DAWN's inactive ONNX embedding provider with a fail-closed stub,
+   because memory and Recall are also disabled in this stage.
 
-The second change keeps this narrow stage from installing or activating Piper
-early. It does not modify the preserved male voice models, does not install a
-voice service, and does not alter the production Piper plan.
+These changes keep this narrow stage from installing or activating Piper,
+ONNX Runtime, a voice service, or an embedding service early. They do not
+modify the preserved male voice models and do not alter the production Piper
+or semantic-memory plans.
 
 The archive stays unchanged; the generated test source is disposable.
 
