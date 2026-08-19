@@ -30,10 +30,20 @@ production dependency.
 Never configure or modify the archived source directly after the initial
 compatibility inventory. Use
 `tools/prepare_dawn_stage3_source.py` to copy it to a distinct directory under
-`/srv/aibrain/test/builds/`. The preparer excludes backup, experiment, and
-secret-like residue and makes one reviewed source change: it adds
-`DAWN_ENABLE_RECALL_TOOL` around the archive's otherwise unconditional Recall
-tool compilation.
+`/srv/aibrain/test/builds/`.
+
+The preparer excludes backup, experiment, and secret-like residue. It makes
+only two reviewed changes in the generated copy:
+
+1. Gates the archive's otherwise unconditional Recall tool compilation with
+   `DAWN_ENABLE_RECALL_TOOL`.
+2. When `DAWN_ENABLE_TTS_TOOL=OFF`, replaces DAWN's unconditional native TTS
+   sources with a no-op implementation and removes Piper, piper-phonemize,
+   eSpeak, and ONNX Runtime from its link dependencies.
+
+The second change keeps this narrow stage from installing or activating Piper
+early. It does not modify the preserved male voice models, does not install a
+voice service, and does not alter the production Piper plan.
 
 The archive stays unchanged; the generated test source is disposable.
 
