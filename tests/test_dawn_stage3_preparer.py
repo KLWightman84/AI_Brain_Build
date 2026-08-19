@@ -90,6 +90,8 @@ def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> Non
     assert "void text_to_speech(const char *text)" in stub
     assert "int text_to_speech_to_pcm(" in stub
     assert "int text_to_speech_to_wav(" in stub
+    assert "pthread_cond_t tts_cond =" not in stub
+    assert "pthread_mutex_t tts_mutex =" not in stub
 
     assert not (destination / "secrets.toml.generated").exists()
     assert not (destination / "old.before-stage3").exists()
