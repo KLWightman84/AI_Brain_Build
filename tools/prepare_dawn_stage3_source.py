@@ -87,7 +87,12 @@ TTS_LINK_BLOCK = """target_link_libraries(dawn
                       pthread
 """
 
-TTS_LINK_GATE = """set(DAWN_TTS_LIBRARIES)
+TTS_LINK_GATE = """set(DAWN_OPTIONAL_COMMON_LIBRARIES)
+if(TARGET dawn_common_vad)
+    list(APPEND DAWN_OPTIONAL_COMMON_LIBRARIES dawn_common_vad)
+endif()
+
+set(DAWN_TTS_LIBRARIES)
 if(DAWN_ENABLE_TTS_TOOL)
     list(APPEND DAWN_TTS_LIBRARIES
         piper
@@ -98,7 +103,7 @@ endif()
 
 target_link_libraries(dawn
                       dawn_common
-                      dawn_common_vad
+                      ${DAWN_OPTIONAL_COMMON_LIBRARIES}
                       dawn_common_asr
                       ${DAWN_TTS_LIBRARIES}
                       pthread
@@ -172,8 +177,6 @@ TTS_STUB = """/*
 
 #include <stddef.h>
 
-pthread_cond_t tts_cond = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t tts_mutex = PTHREAD_MUTEX_INITIALIZER;
 int tts_playback_state = TTS_PLAYBACK_IDLE;
 
 void initialize_text_to_speech(char *pcm_device) {
