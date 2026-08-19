@@ -1,0 +1,20 @@
+[Unit]
+Description=AI Brain RKLLM service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/aibrain/production/apps/AI_Brain_Build
+Environment=AIBRAIN_RKLLM_LIBRARY=/srv/aibrain/production/runtime/librkllmrt.so
+Environment=AIBRAIN_RKLLM_MODEL=/srv/aibrain/production/models/Qwen3.5-4B_w8a8_rk3588_ctx4096.rkllm
+ExecStart=/srv/aibrain/production/runtime/rkllm-venv/bin/gunicorn --worker-class aibrain_rkllm.gunicorn_worker.RKLLMSyncWorker --workers 1 --threads 1 --bind 127.0.0.1:8081 --access-logfile - --error-logfile - aibrain_rkllm.wsgi:app
+StandardOutput=append:/srv/aibrain/production/logs/aibrain-rkllm.log
+StandardError=append:/srv/aibrain/production/logs/aibrain-rkllm.log
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=default.target
