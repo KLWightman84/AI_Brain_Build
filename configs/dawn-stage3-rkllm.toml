@@ -1,0 +1,25 @@
+# Test-only DAWN Stage-3 configuration.  This is not a production DAWN config.
+# It is deliberately small enough for the RKLLM artifact's 4096-token context.
+
+[llm]
+type = "local"
+max_tokens = 8
+conversation_logging = false
+
+[llm.local]
+endpoint = "http://127.0.0.1:8081"
+model = "rkllm"
+vision_enabled = false
+provider = "generic"
+
+[llm.tools]
+mode = "disabled"
+
+[llm.thinking]
+mode = "disabled"
+
+[mqtt]
+enabled = false
+
+[network]
+llm_timeout_ms = 60000
