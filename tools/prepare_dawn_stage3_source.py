@@ -280,6 +280,76 @@ ATTENTION_SESSION_BROADCAST_GATE = """#ifdef ENABLE_MULTI_CLIENT
 #endif
 """
 
+DAWN_STAGE3_HELP_ANCHOR = (
+    '   printf("  --server               Server mode: no local audio, WebUI + satellites only.\\n");\\n'
+)
+
+DAWN_STAGE3_HELP_LINE = (
+    '   printf("  --stage3-prompt TEXT   Run one test-only local LLM completion and exit.\\n");\\n'
+)
+
+DAWN_STAGE3_LONG_OPTION = (
+    '      { "server", no_argument, NULL, 262 },                     // Server mode (no local audio)\\n'
+)
+
+DAWN_STAGE3_LONG_OPTION_REPLACEMENT = (
+    '      { "server", no_argument, NULL, 262 },                     // Server mode (no local audio)\\n'
+    '      { "stage3-prompt", required_argument, NULL, 263 },       // Test-only local LLM probe\\n'
+)
+
+DAWN_STAGE3_CONFIG_VARIABLE = (
+    '   const char *config_path = NULL;  // Explicit config file path from --config\\n'
+)
+
+DAWN_STAGE3_CONFIG_VARIABLE_REPLACEMENT = (
+    '   const char *config_path = NULL;  // Explicit config file path from --config\\n'
+    '   const char *stage3_prompt = NULL;  // Test-only single local LLM completion\\n'
+)
+
+DAWN_STAGE3_SERVER_CASE = """         case 262:  // --server
+            server_mode = 1;
+            strncpy(g_config.general.mode, "server", sizeof(g_config.general.mode) - 1);
+            OLOG_INFO("Server mode: ENABLED (no local audio capture/playback)");
+            break;
+"""
+
+DAWN_STAGE3_SERVER_CASE_REPLACEMENT = """         case 262:  // --server
+            server_mode = 1;
+            strncpy(g_config.general.mode, "server", sizeof(g_config.general.mode) - 1);
+            OLOG_INFO("Server mode: ENABLED (no local audio capture/playback)");
+            break;
+         case 263:  // --stage3-prompt
+            stage3_prompt = optarg;
+            break;
+"""
+
+DAWN_STAGE3_LLM_INIT = """   llm_init(cloud_provider_override);
+
+   // Initialize context management (token tracking, auto-summarization)
+"""
+
+DAWN_STAGE3_LLM_INIT_REPLACEMENT = """   llm_init(cloud_provider_override);
+
+   /* Generated-copy-only Stage-3 acceptance path.  This uses DAWN's normal
+    * configured chat-completion API, then exits before audio, MQTT, WebUI, or
+    * the long-running daemon loop can begin. */
+   if (stage3_prompt != NULL) {
+      struct json_object *stage3_history = json_object_new_array();
+      char *stage3_response =
+          llm_chat_completion(stage3_history, stage3_prompt, NULL, NULL, 0, false);
+      json_object_put(stage3_history);
+      if (stage3_response == NULL) {
+         fprintf(stderr, "DAWN Stage-3 RKLLM completion failed\\n");
+         return 1;
+      }
+      printf("DAWN Stage-3 RKLLM response: %s\\n", stage3_response);
+      free(stage3_response);
+      return 0;
+   }
+
+   // Initialize context management (token tracking, auto-summarization)
+"""
+
 TTS_STUB = """/*
  * Stage-3 server-only TTS stub.
  *
@@ -449,6 +519,36 @@ def add_stage3_support(source_root: Path) -> None:
         ATTENTION_SESSION_BROADCAST,
         ATTENTION_SESSION_BROADCAST_GATE,
         "attention session broadcast",
+    )
+
+    dawn_source = source_root / "src" / "dawn.c"
+    _replace_once(
+        dawn_source, DAWN_STAGE3_HELP_ANCHOR, DAWN_STAGE3_HELP_ANCHOR + DAWN_STAGE3_HELP_LINE,
+        "DAWN help anchor"
+    )
+    _replace_once(
+        dawn_source,
+        DAWN_STAGE3_LONG_OPTION,
+        DAWN_STAGE3_LONG_OPTION_REPLACEMENT,
+        "DAWN long-options anchor",
+    )
+    _replace_once(
+        dawn_source,
+        DAWN_STAGE3_CONFIG_VARIABLE,
+        DAWN_STAGE3_CONFIG_VARIABLE_REPLACEMENT,
+        "DAWN config variable anchor",
+    )
+    _replace_once(
+        dawn_source,
+        DAWN_STAGE3_SERVER_CASE,
+        DAWN_STAGE3_SERVER_CASE_REPLACEMENT,
+        "DAWN server option",
+    )
+    _replace_once(
+        dawn_source,
+        DAWN_STAGE3_LLM_INIT,
+        DAWN_STAGE3_LLM_INIT_REPLACEMENT,
+        "DAWN LLM initialization",
     )
 
 
