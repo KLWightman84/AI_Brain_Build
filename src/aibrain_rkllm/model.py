@@ -11,40 +11,17 @@ from typing import Any
 
 from .abi import RKLLMParam, default_parameters
 from .lifecycle import RKLLMHandleOwner
+from .protocol import (
+    EmbedCallback,
+    RKLLMCallback,
+    RKLLMResult,
+    ResultCallback,
+    TokenizerCallback,
+)
 
 MAX_CONTEXT_LENGTH = 4096
 DEFAULT_MAX_NEW_TOKENS = 512
-
-ResultCallback = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int)
-TokenizerCallback = ctypes.CFUNCTYPE(
-    ctypes.c_int,
-    ctypes.c_void_p,
-    ctypes.c_char_p,
-    ctypes.c_int32,
-    ctypes.POINTER(ctypes.c_int32),
-    ctypes.c_int32,
-)
-EmbedCallback = ctypes.CFUNCTYPE(
-    ctypes.c_int,
-    ctypes.c_void_p,
-    ctypes.POINTER(ctypes.c_int32),
-    ctypes.c_uint64,
-    ctypes.c_void_p,
-    ctypes.c_uint64,
-)
-
-
-class RKLLMCallback(ctypes.Structure):
-    """ABI-compatible callback table from the v1.3.0 RKLLM header."""
-
-    _fields_ = [
-        ("result_callback", ResultCallback),
-        ("result_userdata", ctypes.c_void_p),
-        ("tokenizer_callback", TokenizerCallback),
-        ("tokenizer_userdata", ctypes.c_void_p),
-        ("embed_callback", EmbedCallback),
-        ("embed_userdata", ctypes.c_void_p),
-    ]
+ResultHandler = Callable[[ctypes.POINTER(RKLLMResult), int], int]
 
 
 def bind_model_initialization(library: Any) -> None:
@@ -56,7 +33,7 @@ def bind_model_initialization(library: Any) -> None:
     library.rkllm_init.restype = ctypes.c_int
 
 
-def _discard_result(_: int, __: int, ___: int) -> int:
+def _discard_result(_: ctypes.POINTER(RKLLMResult), __: int) -> int:
     """Safe no-op callback for the load-only acceptance gate."""
     return 0
 
@@ -90,6 +67,7 @@ def initialize_model(
     *,
     max_context_length: int = MAX_CONTEXT_LENGTH,
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS,
+    result_handler: ResultHandler | None = None,
 ) -> InitializedRKLLMModel:
     """Load an RKLLM model without running inference.
 
@@ -110,7 +88,15 @@ def initialize_model(
     parameters.max_new_tokens = max_new_tokens
     parameters.is_async = False
 
-    result_callback = ResultCallback(_discard_result)
+    handler = result_handler or _discard_result
+
+    def callback_impl(result: ctypes.POINTER(RKLLMResult), _: int, state: int) -> int:
+        try:
+            return int(handler(result, state))
+        except Exception:
+            return 0
+
+    result_callback = ResultCallback(callback_impl)
     callback_table = RKLLMCallback()
     callback_table.result_callback = result_callback
     callback_table.result_userdata = None
