@@ -131,6 +131,8 @@ ONNX_EMBED_STUB = """/*
 #include "dawn_error.h"
 #include "memory/memory_embeddings.h"
 
+#include <stddef.h>
+
 static int onnx_init(const char *endpoint, const char *model, const char *api_key) {
     (void)endpoint;
     (void)model;
