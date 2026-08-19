@@ -29,7 +29,7 @@ class FakeLibrary:
         return 0
 
 
-def test_collector_records_text_finish_and_error() -> None:
+def test_collector_records_text_finish_error_and_reset() -> None:
     collector = PromptResponseCollector()
     result = RKLLMResult(text=b"ready")
 
@@ -41,6 +41,10 @@ def test_collector_records_text_finish_and_error() -> None:
 
     assert collector(None, RKLLM_RUN_ERROR) == 0
     assert collector.errored is True
+    collector.reset()
+    assert collector.text == ""
+    assert collector.finished is False
+    assert collector.errored is False
 
 
 def test_run_prompt_uses_stateless_user_generation() -> None:
