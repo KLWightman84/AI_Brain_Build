@@ -118,6 +118,47 @@ PIPER_INCLUDE_GATE = """if(TARGET piper)
 endif()
 """
 
+ONNX_EMBED_SOURCE = "    src/memory/memory_embed_onnx.c\n"
+ONNX_EMBED_STUB_SOURCE = "    src/memory/memory_embed_onnx_stub.c\n"
+
+ONNX_EMBED_STUB = """/*
+ * Stage-3 server-only ONNX embedding stub.
+ *
+ * This generated source is used only while the minimal stage deliberately
+ * excludes memory and recall.  It keeps the provider registry linkable
+ * without installing or linking ONNX Runtime.
+ */
+#include "dawn_error.h"
+#include "memory/memory_embeddings.h"
+
+static int onnx_init(const char *endpoint, const char *model, const char *api_key) {
+    (void)endpoint;
+    (void)model;
+    (void)api_key;
+    return FAILURE;
+}
+
+static void onnx_cleanup(void) {
+}
+
+static int onnx_embed(const char *text, float *out, int max_dims, int *out_dims) {
+    (void)text;
+    (void)out;
+    (void)max_dims;
+    if (out_dims != NULL) {
+        *out_dims = 0;
+    }
+    return FAILURE;
+}
+
+const embedding_provider_t embedding_provider_onnx = {
+    .name = "onnx",
+    .init = onnx_init,
+    .cleanup = onnx_cleanup,
+    .embed = onnx_embed,
+};
+"""
+
 TTS_STUB = """/*
  * Stage-3 server-only TTS stub.
  *
@@ -237,6 +278,19 @@ def gate_native_tts(source_root: Path) -> None:
     stub_path.write_text(TTS_STUB, encoding="utf-8")
 
 
+def stub_onnx_embeddings(source_root: Path) -> None:
+    cmake_lists = source_root / "CMakeLists.txt"
+    _replace_once(
+        cmake_lists,
+        ONNX_EMBED_SOURCE,
+        ONNX_EMBED_STUB_SOURCE,
+        "ONNX embedding source",
+    )
+
+    stub_path = source_root / "src" / "memory" / "memory_embed_onnx_stub.c"
+    stub_path.write_text(ONNX_EMBED_STUB, encoding="utf-8")
+
+
 def prepare_source(reference: Path, destination: Path) -> None:
     if not reference.is_dir():
         raise ValueError(f"reference source does not exist: {reference}")
@@ -246,6 +300,7 @@ def prepare_source(reference: Path, destination: Path) -> None:
     shutil.copytree(reference, destination, ignore=_ignore_archive_residue)
     gate_recall_tool(destination)
     gate_native_tts(destination)
+    stub_onnx_embeddings(destination)
 
 
 def parse_args() -> argparse.Namespace:
