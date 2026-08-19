@@ -30,6 +30,138 @@ else()
 endif()
 """
 
+PIPER_BUILD_BLOCK = """# Text to Speech - check if target already exists (may be created by common/)
+if(NOT TARGET piper)
+    add_library(piper STATIC src/tts/piper.cpp)
+    target_link_libraries(piper onnxruntime)
+endif()
+"""
+
+PIPER_BUILD_GATE = """# Text-to-speech is deliberately absent from the minimal stage-3 build.
+# Only build the native Piper library when the TTS tool is explicitly enabled.
+if(DAWN_ENABLE_TTS_TOOL AND NOT TARGET piper)
+    add_library(piper STATIC src/tts/piper.cpp)
+    target_link_libraries(piper onnxruntime)
+elseif(NOT DAWN_ENABLE_TTS_TOOL)
+    message(STATUS "Piper: DISABLED (minimal stage-3 build)")
+endif()
+"""
+
+TTS_SOURCE_BLOCK = """    # TTS subsystem
+    src/tts/text_to_speech.cpp
+    common/src/tts/tts_preprocessing.cpp
+    common/src/tts/number_to_words.c
+
+"""
+
+TTS_SOURCE_GATE = """    # TTS subsystem
+    # The minimal stage uses a no-op implementation so it does not acquire
+    # Piper, eSpeak, piper-phonemize, or ONNX Runtime as a build dependency.
+    if(DAWN_ENABLE_TTS_TOOL)
+        list(APPEND DAWN_SOURCES
+            src/tts/text_to_speech.cpp
+            common/src/tts/tts_preprocessing.cpp
+            common/src/tts/number_to_words.c)
+    else()
+        list(APPEND DAWN_SOURCES src/tts/text_to_speech_stub.c)
+    endif()
+
+"""
+
+TTS_LINK_BLOCK = """target_link_libraries(dawn
+                      dawn_common
+                      dawn_common_vad
+                      dawn_common_asr
+                      piper
+                      piper_phonemize
+                      espeak-ng
+                      onnxruntime
+                      pthread
+"""
+
+TTS_LINK_GATE = """set(DAWN_TTS_LIBRARIES)
+if(DAWN_ENABLE_TTS_TOOL)
+    list(APPEND DAWN_TTS_LIBRARIES
+        piper
+        piper_phonemize
+        espeak-ng
+        onnxruntime)
+endif()
+
+target_link_libraries(dawn
+                      dawn_common
+                      dawn_common_vad
+                      dawn_common_asr
+                      ${DAWN_TTS_LIBRARIES}
+                      pthread
+"""
+
+TTS_STUB = """/*
+ * Stage-3 server-only TTS stub.
+ *
+ * This generated source is used only while DAWN_ENABLE_TTS_TOOL=OFF.  It keeps
+ * DAWN's required interface linkable without pulling Piper, piper-phonemize,
+ * eSpeak, or ONNX Runtime into the minimal DAWN → RKLLM acceptance build.
+ */
+#include "tts/text_to_speech.h"
+
+#include <stddef.h>
+
+pthread_cond_t tts_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t tts_mutex = PTHREAD_MUTEX_INITIALIZER;
+int tts_playback_state = TTS_PLAYBACK_IDLE;
+
+void initialize_text_to_speech(char *pcm_device) {
+    (void)pcm_device;
+}
+
+void text_to_speech(const char *text) {
+    (void)text;
+}
+
+int text_to_speech_to_pcm(const char *text,
+                          int16_t **pcm_data_out,
+                          size_t *pcm_samples_out,
+                          uint32_t *sample_rate_out) {
+    (void)text;
+    if (pcm_data_out != NULL) {
+        *pcm_data_out = NULL;
+    }
+    if (pcm_samples_out != NULL) {
+        *pcm_samples_out = 0;
+    }
+    if (sample_rate_out != NULL) {
+        *sample_rate_out = 0;
+    }
+    return 1;
+}
+
+int text_to_speech_to_wav(const char *text,
+                          uint8_t **wav_data_out,
+                          size_t *wav_size_out) {
+    (void)text;
+    if (wav_data_out != NULL) {
+        *wav_data_out = NULL;
+    }
+    if (wav_size_out != NULL) {
+        *wav_size_out = 0;
+    }
+    return 1;
+}
+
+void tts_speak_greeting_with_calibration(const char *greeting) {
+    (void)greeting;
+}
+
+int tts_wait_for_completion(int timeout_ms) {
+    (void)timeout_ms;
+    return 0;
+}
+
+void cleanup_text_to_speech(void) {
+}
+"""
+
 
 def _ignore_archive_residue(_: str, names: list[str]) -> set[str]:
     ignored: set[str] = set()
@@ -50,16 +182,28 @@ def _ignore_archive_residue(_: str, names: list[str]) -> set[str]:
     return ignored
 
 
+def _replace_once(path: Path, original: str, replacement: str, label: str) -> None:
+    text = path.read_text(encoding="utf-8")
+    if replacement in text:
+        return
+    if original not in text:
+        raise ValueError(f"unexpected {label} in {path}; refusing to patch it")
+    path.write_text(text.replace(original, replacement, 1), encoding="utf-8")
+
+
 def gate_recall_tool(source_root: Path) -> None:
     tools_cmake = source_root / "cmake" / "DawnTools.cmake"
-    text = tools_cmake.read_text(encoding="utf-8")
-    if RECALL_GATE in text:
-        return
-    if RECALL_BLOCK not in text:
-        raise ValueError(
-            f"unexpected Recall block in {tools_cmake}; refusing to patch it"
-        )
-    tools_cmake.write_text(text.replace(RECALL_BLOCK, RECALL_GATE), encoding="utf-8")
+    _replace_once(tools_cmake, RECALL_BLOCK, RECALL_GATE, "Recall block")
+
+
+def gate_native_tts(source_root: Path) -> None:
+    cmake_lists = source_root / "CMakeLists.txt"
+    _replace_once(cmake_lists, PIPER_BUILD_BLOCK, PIPER_BUILD_GATE, "Piper build block")
+    _replace_once(cmake_lists, TTS_SOURCE_BLOCK, TTS_SOURCE_GATE, "TTS source block")
+    _replace_once(cmake_lists, TTS_LINK_BLOCK, TTS_LINK_GATE, "TTS link block")
+
+    stub_path = source_root / "src" / "tts" / "text_to_speech_stub.c"
+    stub_path.write_text(TTS_STUB, encoding="utf-8")
 
 
 def prepare_source(reference: Path, destination: Path) -> None:
@@ -70,6 +214,7 @@ def prepare_source(reference: Path, destination: Path) -> None:
 
     shutil.copytree(reference, destination, ignore=_ignore_archive_residue)
     gate_recall_tool(destination)
+    gate_native_tts(destination)
 
 
 def parse_args() -> argparse.Namespace:
