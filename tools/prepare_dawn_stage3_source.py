@@ -54,17 +54,25 @@ TTS_SOURCE_BLOCK = """    # TTS subsystem
 
 """
 
-TTS_SOURCE_GATE = """    # TTS subsystem
-    # The minimal stage uses a no-op implementation so it does not acquire
-    # Piper, eSpeak, piper-phonemize, or ONNX Runtime as a build dependency.
-    if(DAWN_ENABLE_TTS_TOOL)
-        list(APPEND DAWN_SOURCES
-            src/tts/text_to_speech.cpp
-            common/src/tts/tts_preprocessing.cpp
-            common/src/tts/number_to_words.c)
-    else()
-        list(APPEND DAWN_SOURCES src/tts/text_to_speech_stub.c)
-    endif()
+TTS_SOURCE_LIST = """    ${DAWN_TTS_SOURCES}
+
+"""
+
+DAWN_SOURCES_ANCHOR = """# Base source files (always compiled)
+set(DAWN_SOURCES
+"""
+
+TTS_SOURCE_VARIABLES = """# TTS subsystem
+# The minimal stage uses a no-op implementation so it does not acquire Piper,
+# eSpeak, piper-phonemize, or ONNX Runtime as a build dependency.
+if(DAWN_ENABLE_TTS_TOOL)
+    set(DAWN_TTS_SOURCES
+        src/tts/text_to_speech.cpp
+        common/src/tts/tts_preprocessing.cpp
+        common/src/tts/number_to_words.c)
+else()
+    set(DAWN_TTS_SOURCES src/tts/text_to_speech_stub.c)
+endif()
 
 """
 
@@ -213,7 +221,13 @@ def gate_recall_tool(source_root: Path) -> None:
 def gate_native_tts(source_root: Path) -> None:
     cmake_lists = source_root / "CMakeLists.txt"
     _replace_once(cmake_lists, PIPER_BUILD_BLOCK, PIPER_BUILD_GATE, "Piper build block")
-    _replace_once(cmake_lists, TTS_SOURCE_BLOCK, TTS_SOURCE_GATE, "TTS source block")
+    _replace_once(
+        cmake_lists,
+        DAWN_SOURCES_ANCHOR,
+        TTS_SOURCE_VARIABLES + DAWN_SOURCES_ANCHOR,
+        "DAWN source-list anchor",
+    )
+    _replace_once(cmake_lists, TTS_SOURCE_BLOCK, TTS_SOURCE_LIST, "TTS source block")
     _replace_once(cmake_lists, TTS_LINK_BLOCK, TTS_LINK_GATE, "TTS link block")
     _replace_once(
         cmake_lists, PIPER_INCLUDE_BLOCK, PIPER_INCLUDE_GATE, "Piper include block"
