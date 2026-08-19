@@ -10,6 +10,8 @@ sys.path.insert(0, str(ROOT))
 from tools.prepare_dawn_stage3_source import (  # noqa: E402
     PIPER_BUILD_BLOCK,
     PIPER_BUILD_GATE,
+    ONNX_EMBED_SOURCE,
+    ONNX_EMBED_STUB_SOURCE,
     PIPER_INCLUDE_BLOCK,
     PIPER_INCLUDE_GATE,
     RECALL_BLOCK,
@@ -37,6 +39,7 @@ def _write_minimal_reference(reference: Path) -> None:
                 "# Base source files (always compiled)",
                 "set(DAWN_SOURCES",
                 TTS_SOURCE_BLOCK,
+                ONNX_EMBED_SOURCE,
                 ")",
                 TTS_LINK_BLOCK,
                 "                      suffix)",
@@ -46,6 +49,7 @@ def _write_minimal_reference(reference: Path) -> None:
         encoding="utf-8",
     )
     (reference / "src" / "tts").mkdir(parents=True)
+    (reference / "src" / "memory").mkdir(parents=True)
 
 
 def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> None:
@@ -74,6 +78,12 @@ def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> Non
     assert TTS_SOURCE_BLOCK not in prepared_cmake
     assert TTS_LINK_BLOCK not in prepared_cmake
     assert PIPER_INCLUDE_BLOCK not in prepared_cmake
+    assert ONNX_EMBED_STUB_SOURCE in prepared_cmake
+    assert ONNX_EMBED_SOURCE not in prepared_cmake
+    embedding_stub = (
+        destination / "src" / "memory" / "memory_embed_onnx_stub.c"
+    ).read_text(encoding="utf-8")
+    assert "const embedding_provider_t embedding_provider_onnx" in embedding_stub
     stub = (destination / "src" / "tts" / "text_to_speech_stub.c").read_text(
         encoding="utf-8"
     )
