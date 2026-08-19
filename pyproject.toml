@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aibrain-rkllm"
+version = "0.1.0"
+description = "Clean RKLLM service for AI Brain on RK3588"
+requires-python = ">=3.12"
+dependencies = [
+  "Flask==2.2.2",
+  "Werkzeug==2.2.2",
+  "Jinja2==3.1.6",
+  "click==8.4.2",
+  "itsdangerous==2.2.0",
+  "MarkupSafe==3.0.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
