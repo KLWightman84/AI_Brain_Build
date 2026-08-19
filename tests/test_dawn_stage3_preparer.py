@@ -34,6 +34,7 @@ def _write_minimal_reference(reference: Path) -> None:
             [
                 "prefix",
                 PIPER_BUILD_BLOCK,
+                "# Base source files (always compiled)",
                 "set(DAWN_SOURCES",
                 TTS_SOURCE_BLOCK,
                 ")",
