@@ -37,7 +37,10 @@ def test_build_request_prompt_is_stateless_and_bounds_context() -> None:
     )
 
     assert "CURRENT REQUEST:\nnewest" in prompt
-    assert prompt.count("context") == MAX_CONTEXT_WORDS
+    reference_context = prompt.split("REFERENCE CONTEXT:\n", 1)[1].split(
+        "\n\nCURRENT REQUEST:", 1
+    )[0]
+    assert len(reference_context.split()) == MAX_CONTEXT_WORDS
 
 
 def test_health_models_and_nonstream_completion() -> None:
