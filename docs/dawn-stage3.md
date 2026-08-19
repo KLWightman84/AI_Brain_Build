@@ -33,21 +33,24 @@ compatibility inventory. Use
 `/srv/aibrain/test/builds/`.
 
 The preparer excludes backup, experiment, and secret-like residue. It makes
-only two reviewed changes in the generated copy:
+reviewed changes only in the generated copy:
 
-1. Gates the archive's otherwise unconditional Recall tool compilation with
-   `DAWN_ENABLE_RECALL_TOOL`.
+1. Gates the archive's otherwise unconditional Recall registration and
+   compilation with `DAWN_ENABLE_RECALL_TOOL`.
 2. When `DAWN_ENABLE_TTS_TOOL=OFF`, replaces DAWN's unconditional native TTS
    sources with a no-op implementation and removes Piper, piper-phonemize,
    eSpeak, and ONNX Runtime from its link dependencies.
-3. Replaces DAWN's inactive ONNX embedding provider with a fail-closed stub,
-   because memory and Recall are also disabled in this stage.
+3. Replaces the inactive ONNX embedding provider and Silero VAD provider with
+   fail-closed stubs, so absent ONNX Runtime cannot become an accidental
+   dependency.
+4. Keeps the archive's local SQLite contacts/calendar support sources and
+   explicitly gates WebUI-only session/attention calls. No user-facing memory,
+   calendar, attention, TTS, or recall feature is enabled.
 
 These changes keep this narrow stage from installing or activating Piper,
-ONNX Runtime, a voice service, or an embedding service early. The generated
-copy also links DAWN's VAD helper only when that optional target exists. They
+ONNX Runtime, a voice service, an embedding service, or a WebUI early. They
 do not modify the preserved male voice models and do not alter the production
-Piper or semantic-memory plans.
+Piper, semantic-memory, calendar, or attention plans.
 
 The archive stays unchanged; the generated test source is disposable.
 
