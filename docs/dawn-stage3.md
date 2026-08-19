@@ -75,6 +75,18 @@ The accepted RKLLM gateway remains:
 The archived `max_tokens = 16384` value is incompatible with the 4096-token
 artifact limit and must not be carried forward.
 
+## Direct DAWN acceptance probe
+
+The generated test copy adds `--stage3-prompt TEXT`. This test-only command
+loads the isolated configuration, initializes DAWN's ordinary local LLM
+subsystem, performs one `llm_chat_completion` request, prints the reply, and
+exits before audio, MQTT, WebUI, or DAWN's long-running loop starts. It is not
+part of the archived source or a production DAWN feature.
+
+Use `configs/dawn-stage3-rkllm.toml` for this probe. It pins the local,
+OpenAI-compatible gateway at `127.0.0.1:8081`, model `rkllm`, generic
+provider, disabled tools/vision, and an eight-token completion ceiling.
+
 ## Promotion rule
 
 No DAWN source, configuration, unit, or runtime state moves to
