@@ -95,6 +95,13 @@ def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> Non
     assert PIPER_BUILD_GATE in prepared_cmake
     assert TTS_SOURCE_VARIABLES in prepared_cmake
     assert DAWN_SOURCES_WITH_STAGE3_SUPPORT in prepared_cmake
+    for support_source in (
+        "src/asr/vad_silero_stub.c",
+        "src/core/stage3_text_cleanup_stub.c",
+        "src/memory/contacts_db.c",
+        "src/tools/calendar_db.c",
+    ):
+        assert support_source in prepared_cmake
     assert TTS_SOURCE_LIST in prepared_cmake
     assert TTS_LINK_GATE in prepared_cmake
     assert PIPER_INCLUDE_GATE in prepared_cmake
