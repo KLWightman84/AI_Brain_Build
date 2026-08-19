@@ -1,6 +1,6 @@
 # Qwen3.5 4B RKLLM test artifact
 
-This record identifies the first clean-rebuild RKLLM artifact. The binary is **not** committed to Git; it remains a test artifact until it passes native Orange Pi acceptance.
+This record identifies the first clean-rebuild RKLLM artifact. The binary is **not** committed to Git. It remains preserved in the test tree; promotion is a separate, controlled copy after this acceptance record.
 
 ## Artifact
 
@@ -9,7 +9,7 @@ This record identifies the first clean-rebuild RKLLM artifact. The binary is **n
 | Filename | `Qwen3.5-4B_w8a8_rk3588_ctx4096.rkllm` |
 | Size | 5.2 GiB (displayed size) |
 | SHA-256 | `f733cb8acc42fc8ce486c965f673da7918fbc1a1a6ae22c7991e389c34963056` |
-| Status | All native-runtime gates passed; loopback service and systemd gates remain |
+| Status | Native and test-service acceptance passed; awaiting controlled production promotion |
 
 ## Conversion contract
 
@@ -44,8 +44,9 @@ RKLLM emitted the expected notice that it exports `Qwen3_5ForCausalLM` from the 
 - The oversized-context recovery gate deliberately sent 6,012 tokens against the 4,096-token limit. RKLLM rejected it with a native context-length error; the same loaded model then returned `READY` to a new short request and released cleanly. Its JSON report remains test-only at `/srv/aibrain/test/logs/rkllm-oversize-recovery-001.json`.
 - The native reinitialization gate completed three successive load → prompt → release cycles. Every cycle returned `READY`; each native handle reported a first, successful release. Its JSON report remains test-only at `/srv/aibrain/test/logs/rkllm-reinitialize-001.json`.
 - After a real reboot, the system returned to Ubuntu on `/dev/mmcblk0p1`, mounted `/srv/aibrain` from `/dev/nvme0n1p1`, and completed a fresh RKLLM `READY` prompt with a clean release.
+- The test-only loopback service bound only to `127.0.0.1:8081`. Its `/healthz`, OpenAI-style non-streaming completion, and callback-driven SSE endpoint all returned the expected result.
+- The test-only systemd user service used one Gunicorn worker. A managed restart showed the explicit `RKLLM Gunicorn worker model released` journal line before the replacement worker loaded and served a fresh `READY` response.
 
-## Required next acceptance gates
+## Required next step
 
-1. Add the loopback-only DAWN service endpoint and test non-streaming and streaming requests, including a systemd-managed restart.
-2. Promote only after all gates pass; do not use this artifact as production solely because these test gates succeeded.
+Copy this verified artifact into `/srv/aibrain/production/models/` without removing its test copy, create a separate production-only service unit, and then integrate DAWN above that fixed local endpoint.
