@@ -76,21 +76,15 @@ endif()
 
 """
 
-DAWN_STAGE3_SUPPORT_SOURCES = """# Server-only support for archive subsystems that DAWN calls unconditionally.
-# Each is either a fail-closed replacement for an intentionally absent runtime
-# (Silero VAD) or a lightweight local implementation needed by a compiled
-# archive source.  None enables a user-facing feature in this stage.
-set(DAWN_STAGE3_SUPPORT_SOURCES
+DAWN_SOURCES_WITH_STAGE3_SUPPORT = """# Base source files (always compiled)
+set(DAWN_SOURCES
+    # Server-only support for archive subsystems that DAWN calls unconditionally.
+    # These preserve linkability without enabling VAD, semantic embeddings,
+    # recall, calendar, contacts, or TTS in this stage.
     src/asr/vad_silero_stub.c
     src/core/stage3_text_cleanup_stub.c
     src/memory/contacts_db.c
-    src/tools/calendar_db.c)
-
-"""
-
-DAWN_SOURCES_WITH_STAGE3_SUPPORT = """# Base source files (always compiled)
-set(DAWN_SOURCES
-    ${DAWN_STAGE3_SUPPORT_SOURCES}
+    src/tools/calendar_db.c
 """
 
 TTS_LINK_BLOCK = """target_link_libraries(dawn
