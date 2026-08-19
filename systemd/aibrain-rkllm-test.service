@@ -1,0 +1,18 @@
+[Unit]
+Description=AI Brain RKLLM test service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/aibrain/test/AI_Brain_Build
+Environment=AIBRAIN_RKLLM_LIBRARY=/srv/aibrain/test/AI-clean-slate-reference/rkllm/runtime/librkllm_api/aarch64/librkllmrt.so
+Environment=AIBRAIN_RKLLM_MODEL=/srv/aibrain/test/models/Qwen3.5-4B_w8a8_rk3588_ctx4096.rkllm
+ExecStart=/srv/aibrain/test/AI_Brain_Build/.venv/bin/gunicorn --workers 1 --threads 1 --bind 127.0.0.1:8081 --access-logfile - --error-logfile - aibrain_rkllm.wsgi:app
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=default.target
