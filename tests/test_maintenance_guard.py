@@ -8,7 +8,11 @@ import unittest
 from contextlib import redirect_stdout
 
 
-MODULE_PATH = Path(__file__).parents[1] / "aibrain_maintenance.py"
+REPO_ROOT = Path(__file__).parents[1]
+GUARD_DIR = REPO_ROOT / "deployment" / "maintenance-guard"
+if not GUARD_DIR.is_dir():
+    GUARD_DIR = REPO_ROOT
+MODULE_PATH = GUARD_DIR / "aibrain_maintenance.py"
 SPEC = importlib.util.spec_from_file_location("aibrain_maintenance", MODULE_PATH)
 assert SPEC and SPEC.loader
 guard = importlib.util.module_from_spec(SPEC)
