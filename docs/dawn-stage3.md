@@ -75,6 +75,12 @@ The accepted RKLLM gateway remains:
 The archived `max_tokens = 16384` value is incompatible with the 4096-token
 artifact limit and must not be carried forward.
 
+The gateway exposes that limit through `GET /v1/dawn/status` as
+`{"backend":"rkllm","max_context_length":4096}`. DAWN queries this endpoint
+before local completions; falling back to its generic 8192-token default is not
+acceptable for broader use.
+
+
 ## Direct DAWN acceptance probe
 
 The generated test copy adds `--stage3-prompt TEXT`. This test-only command
