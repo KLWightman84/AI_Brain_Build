@@ -24,6 +24,7 @@ SERVICE_NAME = "aibrain-rkllm"
 MODEL_ID = "rkllm"
 MAX_CONTEXT_WORDS = 2400
 MAX_NEW_TOKENS = 512
+MODEL_CONTEXT_TOKENS = 4096
 
 
 class CompletionBackend(Protocol):
@@ -264,6 +265,17 @@ def create_app(backend: CompletionBackend) -> Flask:
     def healthz() -> Response:
         return jsonify(
             {"status": "ok", "service": SERVICE_NAME, "model": backend.model_id}
+        )
+
+    @app.get("/v1/dawn/status")
+    def dawn_status() -> Response:
+        """Expose the RKLLM artifact context limit DAWN needs for safe budgeting."""
+        return jsonify(
+            {
+                "backend": "rkllm",
+                "model": backend.model_id,
+                "max_context_length": MODEL_CONTEXT_TOKENS,
+            }
         )
 
     @app.get("/v1/models")
