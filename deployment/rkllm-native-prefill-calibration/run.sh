@@ -127,11 +127,12 @@ STAMP=$(date -u +%Y%m%d-%H%M%S)
 BACKUP_DIR="$BACKUP_ROOT/rkllm-prefill-calibration-$STAMP"
 TMP_DIR=$(mktemp -d "$CAPTURE_ROOT/.rkllm-prefill-calibration.XXXXXX")
 mkdir -p "$BACKUP_DIR"
+SOURCE_MODE=$(stat -c '%a' "$SERVICE")
 PATCHED=0
 
 restore_source() {
     [[ "$PATCHED" -eq 1 ]] || return 0
-    install -m 0644 "$BACKUP_DIR/service.py" "$SERVICE"
+    install -m "$SOURCE_MODE" "$BACKUP_DIR/service.py" "$SERVICE"
     require_file_sha "$SERVICE" "$SOURCE_SHA"
     systemctl --user restart aibrain-rkllm.service
     wait_for_health || return 1
@@ -440,6 +441,7 @@ Q2FjaGUtQ29udHJvbCI6ICJuby1jYWNoZSIsICJYLUFjY2VsLUJ1ZmZlcmluZyI6ICJubyJ9LAog
 ICAgICAgICkKCiAgICByZXR1cm4gYXBwCg==
 CALIBRATED_SERVICE
 CALIBRATION_SHA=$(sha256sum "$SERVICE" | awk '{print $1}')
+chmod "$SOURCE_MODE" "$SERVICE"
 "$PYTHON" -m py_compile "$SERVICE"
 run_existing_tests
 run_prefill_trace_test
