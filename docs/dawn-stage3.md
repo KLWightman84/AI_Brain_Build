@@ -93,6 +93,20 @@ Use `configs/dawn-stage3-rkllm.toml` for this probe. It pins the local,
 OpenAI-compatible gateway at `127.0.0.1:8081`, model `rkllm`, generic
 provider, disabled tools/vision, and an eight-token completion ceiling.
 
+## Acceptance record — 2026-08-20
+
+The isolated test checkout passed all 43 Python tests. The regenerated
+server-only DAWN binary completed the direct acceptance probe against the
+production loopback gateway and printed `DAWN Stage-3 RKLLM response: READY`.
+The same probe passed again after a controlled
+`systemctl --user restart aibrain-rkllm`.
+
+The final probe log confirmed that DAWN selected the configured generic local
+provider and obtained `4096` from `/v1/dawn/status`; it no longer fell back
+to its unsafe generic 8192-token default. No DAWN binary, DAWN configuration,
+or DAWN service has been placed in production. The only production change in
+this stage is the already-tested gateway metadata route.
+
 ## Promotion rule
 
 No DAWN source, configuration, unit, or runtime state moves to
