@@ -35,6 +35,15 @@ SCRIPT_RE = re.compile(r"^deployment/[A-Za-z0-9][A-Za-z0-9._-]*/run\.sh$")
 SENSITIVE_RE = re.compile(
     r"(?i)(token|password|secret|api[_-]?key|authorization)\s*([:=])\s*[^\s,;]+"
 )
+SAFE_ENVIRONMENT_KEYS = (
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "XDG_RUNTIME_DIR",
+    "DBUS_SESSION_BUS_ADDRESS",
+    "LANG",
+    "LC_ALL",
+)
 
 
 class GuardError(RuntimeError):
@@ -75,6 +84,17 @@ def redact(text: str) -> str:
     return SENSITIVE_RE.sub("[REDACTED]", text).replace("\x00", "")
 
 
+def safe_command_environment(source: dict[str, str] | None = None) -> dict[str, str]:
+    """Preserve only the user-bus variables required by fixed user-service probes."""
+    source = os.environ if source is None else source
+    environment = {"PATH": "/usr/bin:/bin"}
+    for key in SAFE_ENVIRONMENT_KEYS:
+        value = source.get(key)
+        if value:
+            environment[key] = value
+    return environment
+
+
 def run_fixed(command: tuple[str, ...], timeout: float = 8.0) -> dict[str, Any]:
     """Run a fixed argument vector; no shell, interpolation, or LLM input."""
     try:
@@ -84,7 +104,7 @@ def run_fixed(command: tuple[str, ...], timeout: float = 8.0) -> dict[str, Any]:
             capture_output=True,
             timeout=timeout,
             check=False,
-            env={"PATH": "/usr/bin:/bin"},
+            env=safe_command_environment(),
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         return {"ok": False, "error": redact(str(error))}
