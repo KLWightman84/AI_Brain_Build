@@ -138,7 +138,7 @@ PY
 if ! ss -ltnH | awk '$4 == "127.0.0.1:8081" { found = 1 } END { exit !found }'; then
     die "RKLLM is not listening only at the expected loopback address."
 fi
-if ss -ltnH | awk '$4 ~ /:8081$/ && $4 != "127.0.0.1:8081" { bad = 1 } END { exit bad }'; then
+if ! ss -ltnH | awk '$4 ~ /:8081$/ && $4 != "127.0.0.1:8081" { bad = 1 } END { exit bad }'; then
     die "RKLLM has a non-loopback listener on port 8081."
 fi
 
@@ -185,7 +185,7 @@ grep -F 'wctx->wparams.beam_search.beam_size = 6;' "$ASR_SOURCE" >/dev/null || d
 systemctl --user restart "$WEBUI_SERVICE"
 wait_for_listener 127.0.0.1:3000 90 || die "WebUI did not listen on 127.0.0.1:3000 after restart."
 systemctl --user is-active --quiet "$WEBUI_SERVICE" || die "WebUI service is not active."
-if ss -ltnH | awk '$4 ~ /:3000$/ && $4 != "127.0.0.1:3000" { bad = 1 } END { exit bad }'; then
+if ! ss -ltnH | awk '$4 ~ /:3000$/ && $4 != "127.0.0.1:3000" { bad = 1 } END { exit bad }'; then
     die "WebUI has a non-loopback listener on port 3000."
 fi
 
