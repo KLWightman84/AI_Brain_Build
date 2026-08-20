@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).parents[1]
@@ -34,6 +35,22 @@ def valid_request() -> dict[str, object]:
 
 
 class MaintenanceGuardTests(unittest.TestCase):
+    def test_fixed_runner_preserves_only_required_user_bus_environment(self) -> None:
+        completed = type("Completed", (), {"returncode": 0, "stdout": "active", "stderr": ""})()
+        source = {
+            "HOME": "/home/ai_brain",
+            "XDG_RUNTIME_DIR": "/run/user/1000",
+            "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+            "UNRELATED_SECRET": "must-not-propagate",
+        }
+        environment = guard.safe_command_environment(source)
+        self.assertEqual(environment["PATH"], "/usr/bin:/bin")
+        self.assertEqual(environment["XDG_RUNTIME_DIR"], "/run/user/1000")
+        self.assertNotIn("UNRELATED_SECRET", environment)
+        with patch.object(guard.subprocess, "run", return_value=completed) as runner:
+            guard.run_fixed(("systemctl", "--user", "is-active", "aibrain-rkllm.service"))
+        self.assertEqual(runner.call_args.kwargs["env"], guard.safe_command_environment())
+
     def test_release_request_is_strict_and_immutable(self) -> None:
         request = guard.parse_release_request(valid_request(), guard.default_policy())
         self.assertTrue(guard.release_url(request).endswith("/" + request.commit + "/" + request.script))
