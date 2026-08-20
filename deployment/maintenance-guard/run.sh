@@ -11,7 +11,7 @@ fi
 COMMIT="$1"
 REPOSITORY="KLWightman84/AI_Brain_Build"
 SOURCE_PATH="deployment/maintenance-guard/aibrain_maintenance.py"
-SOURCE_SHA256="e9c10e387b644ef76a361dd855c9fe6dd4c40ab1b5fa2d4fae09fa1eb4c77025"
+SOURCE_SHA256="64fb783e64faaddacc0b4beb3a530083a057feaeb709e02e7086d231a6326e9c"
 CONTRACT_PATH="deployment/maintenance-guard/AI_TOOL_CONTRACT.md"
 CONTRACT_SHA256="7ba3591cfcc802e869ccaca67f8f8cf98682b2898588f0e7239e84840a14d1c6"
 ROOT="${AIBRAIN_MAINTENANCE_ROOT:-/srv/aibrain/production/maintenance}"
