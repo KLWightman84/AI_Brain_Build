@@ -23,3 +23,6 @@ enabled = false
 
 [network]
 llm_timeout_ms = 60000
+
+[url_fetcher]
+fallback = "none"
