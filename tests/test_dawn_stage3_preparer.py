@@ -154,6 +154,9 @@ def test_prepare_source_copies_and_gates_minimal_features(tmp_path: Path) -> Non
     prepared_dawn = (destination / "src" / "dawn.c").read_text(encoding="utf-8")
     assert DAWN_STAGE3_HELP_LINE in prepared_dawn
     assert 'case 263:  // --stage3-prompt' in prepared_dawn
+    assert 'json_object_object_add(stage3_message, "role", json_object_new_string("user"))' in prepared_dawn
+    assert 'json_object_object_add(stage3_message, "content", json_object_new_string(stage3_prompt))' in prepared_dawn
+    assert "json_object_array_add(stage3_history, stage3_message)" in prepared_dawn
     assert "llm_chat_completion(stage3_history, stage3_prompt" in prepared_dawn
     assert "DAWN Stage-3 RKLLM response:" in prepared_dawn
 
