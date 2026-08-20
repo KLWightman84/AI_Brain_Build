@@ -49,7 +49,6 @@ done
 
 git -C "$APP_ROOT" status --short >"$TMP/git-status.txt"
 git -C "$APP_ROOT" rev-parse HEAD >"$TMP/git-head.txt"
-git -C "$APP_ROOT" remote -v >"$TMP/git-remotes.txt" || true
 git -C "$APP_ROOT" diff --check HEAD >"$TMP/diff-check.txt"
 git -C "$APP_ROOT" diff --binary HEAD -- "$SERVICE_REL" "$TEST_REL" >"$TMP/adapter.patch"
 printf '%s\n' "${UNTRACKED[@]}" >"$TMP/generated-untracked.txt"
@@ -103,7 +102,7 @@ payload = {
 PY
 
 tar -C "$TMP" -czf "$ARCHIVE" \
-    manifest.json git-status.txt git-head.txt git-remotes.txt diff-check.txt \
+    manifest.json git-status.txt git-head.txt diff-check.txt \
     adapter.patch generated-untracked.txt current-file-sha256.txt py-compile.txt unit-tests.txt
 
 echo "PASS: RKLLM source-closure capture created."
