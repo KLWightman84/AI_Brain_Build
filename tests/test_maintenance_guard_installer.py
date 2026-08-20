@@ -4,7 +4,10 @@ import unittest
 from pathlib import Path
 
 
-ROOT = Path(__file__).parents[1]
+REPO_ROOT = Path(__file__).parents[1]
+ROOT = REPO_ROOT / "deployment" / "maintenance-guard"
+if not ROOT.is_dir():
+    ROOT = REPO_ROOT
 SOURCE = ROOT / "aibrain_maintenance.py"
 INSTALLER = ROOT / "run.sh"
 
