@@ -1,0 +1,14 @@
+# Paths permitted inside a pilot-provenance-audit archive
+#
+# All generated files must be regular files beneath one of these prefixes.
+# The runner rejects symlinks and any path outside this contract.
+
+meta/
+services/
+dawn/
+piper/
+models/
+build/
+adapter/
+integrity/
+report.md
