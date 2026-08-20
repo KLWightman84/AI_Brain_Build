@@ -60,13 +60,13 @@ if [[ ! -x "$VENV/bin/python" ]]; then
 fi
 "$VENV/bin/python" -m pip install --no-index --no-deps "$WHEEL_PATH"
 
-TOKENIZER="$TOKENIZER" "$VENV/bin/python" - <<'PY' >"$TMP_DIR/runtime-check.json"
+RKLLM_TOKENIZER_PATH="$TOKENIZER" "$VENV/bin/python" - <<'PY' >"$TMP_DIR/runtime-check.json"
 import json
 import os
 
 from tokenizers import Tokenizer, __version__
 
-tokenizer = Tokenizer.from_file(os.environ['TOKENIZER'])
+tokenizer = Tokenizer.from_file(os.environ['RKLLM_TOKENIZER_PATH'])
 samples = {
     'ascii': 'CURRENT USER REQUEST: Reply exactly READY.',
     'unicode': 'Jarvis — 你好 👋',
