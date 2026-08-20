@@ -2,6 +2,7 @@ from collections.abc import Iterable
 
 from aibrain_rkllm.service import (
     MAX_CONTEXT_WORDS,
+    MODEL_CONTEXT_TOKENS,
     build_request_prompt,
     create_app,
 )
@@ -49,6 +50,14 @@ def test_health_models_and_nonstream_completion() -> None:
 
     assert client.get("/healthz").get_json()["status"] == "ok"
     assert client.get("/v1/models").get_json()["data"][0]["id"] == "rkllm"
+
+    status = client.get("/v1/dawn/status")
+    assert status.status_code == 200
+    assert status.get_json() == {
+        "backend": "rkllm",
+        "max_context_length": MODEL_CONTEXT_TOKENS,
+        "model": "rkllm",
+    }
 
     response = client.post(
         "/v1/chat/completions",
