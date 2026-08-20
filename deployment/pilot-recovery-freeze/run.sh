@@ -157,11 +157,44 @@ assert choice["finish_reason"] == "stop", choice
 PY
 
 curl --fail --silent --show-error --no-buffer --max-time 120 \
+    --dump-header "$TMPDIR/stream.headers" \
     -H 'Content-Type: application/json' \
-    -d '{"model":"rkllm","stream":true,"max_tokens":8,"messages":[{"role":"system","content":"Reply with exactly STREAM-OK and nothing else."},{"role":"user","content":"Respond now."}]}' \
+    -d '{"model":"rkllm","stream":true,"max_tokens":32,"messages":[{"role":"user","content":"Give a brief greeting."}]}' \
     http://127.0.0.1:8081/v1/chat/completions >"$TMPDIR/stream.txt"
-grep -F 'STREAM-OK' "$TMPDIR/stream.txt" >/dev/null || die "RKLLM streaming content check failed."
-grep -F 'data: [DONE]' "$TMPDIR/stream.txt" >/dev/null || die "RKLLM streaming completion check failed."
+grep -Eiq '^content-type:[[:space:]]*text/event-stream' "$TMPDIR/stream.headers" || die "RKLLM streaming response did not declare text/event-stream."
+"$PYTHON" - "$TMPDIR/stream.txt" <<'PY'
+import json
+import sys
+
+seen_content = False
+seen_terminal = False
+seen_done = False
+for line in open(sys.argv[1], encoding="utf-8"):
+    if not line.startswith("data: "):
+        continue
+    payload = line[6:].strip()
+    if payload == "[DONE]":
+        assert not seen_done, "duplicate [DONE] event"
+        seen_done = True
+        continue
+    assert not seen_done, "event received after [DONE]"
+    event = json.loads(payload)
+    assert "error" not in event, event
+    for choice in event.get("choices", []):
+        delta = choice.get("delta", {})
+        if isinstance(delta.get("content"), str) and delta["content"]:
+            seen_content = True
+        reason = choice.get("finish_reason")
+        if reason is not None:
+            assert reason == "stop", choice
+            assert not seen_terminal, "duplicate terminal SSE choice"
+            seen_terminal = True
+
+assert seen_content, "stream did not contain a nonempty content delta"
+assert seen_terminal, "stream did not contain a terminal stop choice"
+assert seen_done, "stream did not contain [DONE]"
+PY
+wait_for_http http://127.0.0.1:8081/healthz 15 || die "RKLLM did not remain healthy after streaming."
 
 echo "=== 768-TOKEN CAPACITY CHECK ==="
 curl --fail --silent --show-error --max-time 300 \
