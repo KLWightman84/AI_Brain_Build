@@ -26,6 +26,10 @@ readonly PROVENANCE_BASE="9ed366587bc409389665536caba061eb9fc95e36"
 
 stage=""
 archive=""
+raw_key_hits=""
+raw_signature_hits=""
+raw_binary_hits=""
+fixture_dir=""
 declare -A GATE_STATE
 declare -A GATE_NOTE
 
@@ -38,6 +42,17 @@ cleanup() {
     if [[ -n "${stage}" && -d "${stage}" ]]; then
         case "${stage}" in
             "${CAPTURE_ROOT}"/.pilot-provenance-audit.*) rm -rf -- "${stage}" ;;
+        esac
+    fi
+    for transient in "${raw_key_hits}" "${raw_signature_hits}" "${raw_binary_hits}"; do
+        [[ -n "${transient}" && -f "${transient}" ]] || continue
+        case "${transient}" in
+            "${CAPTURE_ROOT}"/.pilot-provenance-audit-scan.*) rm -f -- "${transient}" ;;
+        esac
+    done
+    if [[ -n "${fixture_dir}" && -d "${fixture_dir}" ]]; then
+        case "${fixture_dir}" in
+            "${CAPTURE_ROOT}"/.pilot-provenance-audit-fixtures.*) rm -rf -- "${fixture_dir}" ;;
         esac
     fi
 }
@@ -235,18 +250,168 @@ assert_stage_contract() {
     fi
 }
 
-scan_sensitive_values() {
-    local keys="${stage}/integrity/sensitive-key-scan.txt"
-    local signatures="${stage}/integrity/token-signature-scan.txt"
-    grep -RInE --binary-files=without-match -i \
-        '(password|secret|token|api[_-]?key|authorization|cookie|credential)[[:space:]]*[:=]' \
-        "${stage}" >"${keys}" 2>&1 || true
-    grep -RInE --binary-files=without-match \
-        '(gh[pousr]_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|DAWN-[A-Z0-9-]{12,})' \
-        "${stage}" >"${signatures}" 2>&1 || true
-    if [[ -s "${keys}" || -s "${signatures}" ]]; then
-        die "Sensitive-value scan failed; capture archive was not created"
+record_hits() {
+    local class="$1"
+    local rule="$2"
+    local pattern="$3"
+    local output="$4"
+    shift 4
+    local file
+    for file in "$@"; do
+        [[ -f "${file}" ]] || continue
+        grep -I -H -nE "${pattern}" "${file}" 2>/dev/null | \
+            while IFS= read -r hit; do
+                printf '%s\t%s\t%s\n' "${class}" "${rule}" "${hit}"
+            done >>"${output}" || true
+    done
+}
+
+record_key_hits() {
+    local class="$1"
+    local rule="$2"
+    local pattern="$3"
+    local output="$4"
+    shift 4
+    local file
+    for file in "$@"; do
+        [[ -f "${file}" ]] || continue
+        grep -I -H -i -nE "${pattern}" "${file}" 2>/dev/null | \
+            while IFS= read -r hit; do
+                printf '%s\t%s\t%s\n' "${class}" "${rule}" "${hit}"
+            done >>"${output}" || true
+    done
+}
+
+reject_nontext_stage_files() {
+    local root="$1"
+    local output="$2"
+    local file
+    : >"${output}"
+    while IFS= read -r -d '' file; do
+        if [[ -s "${file}" ]] && ! grep -Iq . "${file}"; then
+            printf '%s\n' "${file}" >>"${output}"
+        fi
+    done < <(find "${root}" -type f -print0)
+}
+
+write_safe_failure_report() {
+    local report="$1"
+    local root="$2"
+    local raw="$3"
+    local class rule hit path remainder line text relative line_bytes line_hash
+    umask 077
+    {
+        printf 'Pilot provenance audit safety failure\n'
+        printf 'capture_time: %s\n' "$(date --iso-8601=seconds)"
+        printf 'archive_created: no\n\n'
+        while IFS=$'\t' read -r class rule hit; do
+            path="${hit%%:*}"
+            remainder="${hit#*:}"
+            line="${remainder%%:*}"
+            text="${remainder#*:}"
+            relative="${path#"${root}"/}"
+            line_bytes="$(printf '%s' "${text}" | LC_ALL=C wc -c)"
+            line_hash="$(printf '%s' "${text}" | sha256sum | awk '{print $1}')"
+            printf 'class=%s rule=%s path=%s line=%s bytes=%s sha256=%s\n' \
+                "${class}" "${rule}" "${relative}" "${line}" "${line_bytes}" "${line_hash}"
+        done <"${raw}"
+        while IFS= read -r path; do
+            relative="${path#"${root}"/}"
+            printf 'class=staged_binary rule=binary.rejected path=%s line=0 bytes=%s sha256=%s\n' \
+                "${relative}" "$(stat -c '%s' "${path}")" "$(sha256sum "${path}" | awk '{print $1}')"
+        done <"${raw_binary_hits}"
+    } >"${report}"
+    chmod 600 "${report}"
+}
+
+run_scanner_self_test() {
+    local raw_keys raw_signatures raw_binary safe_report
+    fixture_dir="$(mktemp -d "${CAPTURE_ROOT}/.pilot-provenance-audit-fixtures.XXXXXX")"
+    mkdir -p "${fixture_dir}"/{config,systemd,docs,source}
+    printf 'def use(api_key):\n    return api_key\n' >"${fixture_dir}/source/identifier.py"
+    printf 'Normal prose can mention a token without being one.\n' >"${fixture_dir}/docs/readme.txt"
+    printf 'www_path = "dawn-stage3-source/www"\n' >"${fixture_dir}/config/normal.toml"
+    printf 'Api_Key = "fixture-value-do-not-disclose"\n' >"${fixture_dir}/config/mixed.toml"
+    printf 'Environment=DEMO_TOKEN=fixture-value-do-not-disclose\n' >"${fixture_dir}/systemd/unit.txt"
+    printf 'DAWN-TESTTOKEN-1234\n' >"${fixture_dir}/docs/setup-token.txt"
+    printf 'dawn-testtoken-1234\n' >"${fixture_dir}/docs/lowercase.txt"
+    raw_keys="$(mktemp "${CAPTURE_ROOT}/.pilot-provenance-audit-scan.keys.XXXXXX")"
+    raw_signatures="$(mktemp "${CAPTURE_ROOT}/.pilot-provenance-audit-scan.signatures.XXXXXX")"
+    raw_binary="$(mktemp "${CAPTURE_ROOT}/.pilot-provenance-audit-scan.binary.XXXXXX")"
+    : >"${raw_keys}"
+    : >"${raw_signatures}"
+    record_key_hits config_key config.assignment.sensitive_key \
+        '^[[:space:]]*([A-Za-z0-9.-]+[_-])?(api[_-]?key|token|secret|password|credential|authorization|bearer)[[:space:]]*(:[^=[:space:]]+)?[[:space:]]*=' \
+        "${raw_keys}" "${fixture_dir}/config/normal.toml" "${fixture_dir}/config/mixed.toml"
+    record_key_hits config_key systemd.environment.sensitive_key \
+        '^[[:space:]]*Environment[[:space:]]*=[[:space:]]*([A-Za-z0-9.-]+[_-])?(api[_-]?key|token|secret|password|credential|authorization|bearer)[[:space:]]*=' \
+        "${raw_keys}" "${fixture_dir}/systemd/unit.txt"
+    record_hits token_signature token.github \
+        'gh[pousr]_[A-Za-z0-9_]{20,}' "${raw_signatures}" "${fixture_dir}/docs/setup-token.txt"
+    record_hits token_signature token.provider \
+        'sk-[A-Za-z0-9_-]{20,}' "${raw_signatures}" "${fixture_dir}/docs/setup-token.txt"
+    record_hits token_signature token.dawn_setup \
+        'DAWN-[A-Z0-9-]{10,}' "${raw_signatures}" $(find "${fixture_dir}" -type f -print)
+    reject_nontext_stage_files "${fixture_dir}" "${raw_binary}"
+    safe_report="${fixture_dir}/safe-report.txt"
+    raw_binary_hits="${raw_binary}"
+    write_safe_failure_report "${safe_report}" "${fixture_dir}" <(cat "${raw_keys}" "${raw_signatures}")
+    if [[ "$(wc -l <"${raw_keys}")" -ne 2 || "$(wc -l <"${raw_signatures}")" -ne 1 || -s "${raw_binary}" ]] || \
+        grep -q 'fixture-value-do-not-disclose\|DAWN-TESTTOKEN-1234' "${safe_report}" || [[ -n "${archive}" ]]; then
+        die "Scanner self-test failed; refusing audit"
     fi
+    printf 'PASS source_api_key_identifier\nPASS normal_token_prose\nPASS lowercase_dawn_text\nPASS config_key_detection\nPASS systemd_key_detection\nPASS uppercase_dawn_signature\nPASS failure_report_redacts_values\nPASS self_test_no_archive\n' \
+        >"${stage}/integrity/scanner-self-test.txt"
+    rm -f -- "${raw_keys}" "${raw_signatures}" "${raw_binary}"
+    raw_binary_hits=""
+    rm -rf -- "${fixture_dir}"
+    fixture_dir=""
+}
+
+scan_sensitive_values() {
+    local failure_report raw_combined
+    local -a staged_files
+    raw_key_hits="$(mktemp "${CAPTURE_ROOT}/.pilot-provenance-audit-scan.keys.XXXXXX")"
+    raw_signature_hits="$(mktemp "${CAPTURE_ROOT}/.pilot-provenance-audit-scan.signatures.XXXXXX")"
+    raw_binary_hits="$(mktemp "${CAPTURE_ROOT}/.pilot-provenance-audit-scan.binary.XXXXXX")"
+    : >"${raw_key_hits}"
+    : >"${raw_signature_hits}"
+    record_key_hits config_key config.assignment.sensitive_key \
+        '^[[:space:]]*([A-Za-z0-9.-]+[_-])?(api[_-]?key|token|secret|password|credential|authorization|bearer)[[:space:]]*(:[^=[:space:]]+)?[[:space:]]*=' \
+        "${raw_key_hits}" \
+        "${stage}/services/dawn-config-safe-fields.txt" \
+        "${stage}/build/dawn-CMakeCache-sanitized.txt" \
+        "${stage}/piper/configure-cache.txt"
+    record_key_hits config_key systemd.environment.sensitive_key \
+        '^[[:space:]]*Environment[[:space:]]*=[[:space:]]*([A-Za-z0-9.-]+[_-])?(api[_-]?key|token|secret|password|credential|authorization|bearer)[[:space:]]*=' \
+        "${raw_key_hits}" \
+        "${stage}/services/rkllm-unit-safe-fields.txt" \
+        "${stage}/services/webui-unit-safe-fields.txt"
+    mapfile -d '' -t staged_files < <(find "${stage}" -type f -print0)
+    record_hits token_signature token.github \
+        'gh[pousr]_[A-Za-z0-9_]{20,}' "${raw_signature_hits}" \
+        "${staged_files[@]}"
+    record_hits token_signature token.provider \
+        'sk-[A-Za-z0-9_-]{20,}' "${raw_signature_hits}" \
+        "${staged_files[@]}"
+    record_hits token_signature token.dawn_setup \
+        'DAWN-[A-Z0-9-]{10,}' "${raw_signature_hits}" \
+        "${staged_files[@]}"
+    reject_nontext_stage_files "${stage}" "${raw_binary_hits}"
+    if [[ -s "${raw_key_hits}" || -s "${raw_signature_hits}" || -s "${raw_binary_hits}" ]]; then
+        failure_report="${CAPTURE_ROOT}/pilot-provenance-audit-failed-$(date +%Y%m%d-%H%M%S).txt"
+        raw_combined="$(mktemp "${CAPTURE_ROOT}/.pilot-provenance-audit-scan.combined.XXXXXX")"
+        cat "${raw_key_hits}" "${raw_signature_hits}" >"${raw_combined}"
+        write_safe_failure_report "${failure_report}" "${stage}" "${raw_combined}"
+        rm -f -- "${raw_combined}"
+        printf 'ERROR: Sensitive-value scan failed; no archive was created.\n' >&2
+        printf 'Safe failure report: %s\n' "${failure_report}" >&2
+        exit 1
+    fi
+    rm -f -- "${raw_key_hits}" "${raw_signature_hits}" "${raw_binary_hits}"
+    raw_key_hits=""
+    raw_signature_hits=""
+    raw_binary_hits=""
 }
 
 write_allowlist() {
@@ -293,7 +458,7 @@ if (( $# != 0 )); then
 fi
 
 for command in awk basename cat cmake date dpkg-query find git grep head ldd mkdir \
-    mktemp mv patch readelf readlink rm sed sha256sum sort ss stat strings systemctl tar tr uname xargs; do
+    mktemp mv patch readelf readlink rm sed sha256sum sort ss stat strings systemctl tar tr uname wc xargs; do
     require_command "${command}"
 done
 
@@ -427,6 +592,7 @@ gate 6 INCOMPLETE 'Integrity scan pending.'
 write_allowlist
 assert_stage_contract
 write_report
+run_scanner_self_test
 scan_sensitive_values
 gate 6 PASS 'Staged paths matched the allowlist, no symlinks were present, and both sensitive-value scans were empty.'
 write_report

@@ -15,6 +15,12 @@ It writes a new timestamped, sanitized archive under
 `/srv/aibrain/test/captures/`. The archive deliberately excludes model
 binaries and records their paths, sizes, and hashes instead.
 
+Before scanning live evidence, the runner validates its scanner against
+controlled fixtures. If the live scan finds a possible secret, it creates no
+archive. Instead it writes a mode-600 failure report in the capture directory
+containing only the rule, relative path, line number, line byte length, and a
+SHA-256 of the matching line—never the matching value or surrounding text.
+
 ## Evidence collected
 
 - DAWN/WebUI/Whisper source identity, tree manifests, selected accepted patches,
