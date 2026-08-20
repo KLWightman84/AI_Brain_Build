@@ -335,6 +335,10 @@ DAWN_STAGE3_LLM_INIT_REPLACEMENT = """   llm_init(cloud_provider_override);
     * the long-running daemon loop can begin. */
    if (stage3_prompt != NULL) {
       struct json_object *stage3_history = json_object_new_array();
+      struct json_object *stage3_message = json_object_new_object();
+      json_object_object_add(stage3_message, "role", json_object_new_string("user"));
+      json_object_object_add(stage3_message, "content", json_object_new_string(stage3_prompt));
+      json_object_array_add(stage3_history, stage3_message);
       char *stage3_response =
           llm_chat_completion(stage3_history, stage3_prompt, NULL, NULL, 0, false);
       json_object_put(stage3_history);
