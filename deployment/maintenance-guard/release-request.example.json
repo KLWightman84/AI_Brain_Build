@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "kind": "repair",
+  "repository": "KLWightman84/AI_Brain_Build",
+  "commit": "replace-with-a-full-40-character-immutable-commit-sha",
+  "script": "deployment/example-repair/run.sh",
+  "sha256": "replace-with-the-64-character-sha256-of-run.sh",
+  "summary": "One isolated repair with a documented rollback path.",
+  "verification": [
+    "unit tests pass before deployment",
+    "service health check passes after deployment",
+    "rollback is automatic if a required verification fails"
+  ]
+}
