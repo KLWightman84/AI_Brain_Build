@@ -10,10 +10,10 @@ trap 'rm -rf -- "$tmp"' EXIT
 
 redact() {
   sed -E \
-    -e 's/gho_[A-Za-z0-9_]+/[GITHUB-TOKEN-REDACTED]/g' \
-    -e 's/github_pat_[A-Za-z0-9_]+/[GITHUB-TOKEN-REDACTED]/g' \
-    -e 's/DAWN-[A-Za-z0-9-]+/[DAWN-TOKEN-REDACTED]/g' \
-    -e 's/-----BEGIN (RSA|OPENSSH|EC) PRIVATE KEY-----/[PRIVATE-KEY-REDACTED]/g'
+    -e 's/gho_[A-Za-z0-9_]+/[REDACTED_GITHUB_TOKEN]/g' \
+    -e 's/github_pat_[A-Za-z0-9_]+/[REDACTED_GITHUB_TOKEN]/g' \
+    -e 's/DAWN-[A-Za-z0-9-]+/[REDACTED_DAWN_SETUP_TOKEN]/g' \
+    -e 's/-----BEGIN (RSA|OPENSSH|EC) PRIVATE KEY-----/[REDACTED_PRIVATE_KEY]/g'
 }
 
 {
