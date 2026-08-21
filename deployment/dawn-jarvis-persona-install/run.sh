@@ -21,7 +21,7 @@ WW91IGFyZSBKQVJWSVM6IGEgcmVmaW5lZCwgY2FwYWJsZSwgYW5kIGRlcGVuZGFibGUgcGVyc29uYWwg
 PERSONA
 printf '\n"""\n' >>"$CONFIG"
 systemctl --user restart "$SERVICE"
-for attempt in $(seq 1 20); do
+for attempt in $(seq 1 60); do
   systemctl --user is-active --quiet "$SERVICE" && ss -ltnH | awk '$4=="127.0.0.1:3000"{ok=1} END{exit !ok}' && break
   sleep 1
 done
@@ -32,4 +32,3 @@ grep -q '^\[persona\]$' "$CONFIG"
 printf 'PASS: JARVIS Persona v1 installed.\n'
 printf 'Backup: %s\n' "$backup"
 trap - EXIT
-
