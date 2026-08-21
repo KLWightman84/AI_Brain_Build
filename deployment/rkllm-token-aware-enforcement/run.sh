@@ -42,7 +42,7 @@ require_file_sha() {
 wait_for_health() {
     local attempt
     for attempt in $(seq 1 35); do
-        if curl -fsS "$HEALTH_URL" >/dev/null; then
+        if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
             return 0
         fi
         sleep 1
