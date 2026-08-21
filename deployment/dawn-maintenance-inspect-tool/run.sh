@@ -25,14 +25,7 @@ expected_tool_source=f7a1e3f8b61ca6e1ec83166e9a45a2019d544b175150488ce466a6c9087
 expected_tool_header=6fdade34fde554105e62afe34f24f49ef5e7293df32a17d71d3cb89919b58eef
 source_base=https://raw.githubusercontent.com/KLWightman84/AI_Brain_Build/4060ea7af9812a5a858648fc7042f5dbf92d71d4/deployment/dawn-maintenance-inspect-tool
 
-fail() {
-  printf 'ERROR: %s\n' "$*" >&2
-  exit 1
-}
-
-rollback() {
-  local code=$?
-  trap - ERR
+restore() {
   if [ "$APPLIED" -eq 1 ]; then
     printf '%s\n' 'Restoring DAWN source and executable from this installer backup.' >&2
     cp "$BACKUP/tools_init.c" "$TOOLS_INIT"
@@ -40,7 +33,20 @@ rollback() {
     rm -f "$TOOL_SOURCE" "$TOOL_HEADER"
     cp "$BACKUP/dawn" "$DAWN"
     systemctl --user restart "$SERVICE" || true
+    APPLIED=0
   fi
+}
+
+fail() {
+  printf 'ERROR: %s\n' "$*" >&2
+  restore
+  exit 1
+}
+
+rollback() {
+  local code=$?
+  trap - ERR
+  restore
   exit "$code"
 }
 trap rollback ERR
