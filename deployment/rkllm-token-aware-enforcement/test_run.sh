@@ -6,6 +6,7 @@ RUN="$ROOT/run.sh"
 
 bash -n "$RUN"
 grep -Fq "readonly SOURCE_SHA='6bb2338b4cf1118611053ac6a4c2c9d92ee2327ca02c0c3849d118dbb37278de'" "$RUN"
+grep -Fq "readonly FACTORY_SHA='eff6c6fb0689eb6e6eb9aa27810cbac10072ecaff6ede9e489d15b38debb7725'" "$RUN"
 grep -Fq "calibrated_envelope_reserve_tokens" "$RUN"
 grep -Fq 'TOKEN_ENVELOPE_RESERVE = 46' "$RUN" || true
 grep -Fq 'mandatory prompt content exceeds safe input budget' "$RUN"
