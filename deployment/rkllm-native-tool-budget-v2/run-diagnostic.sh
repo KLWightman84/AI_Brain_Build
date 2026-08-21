@@ -41,10 +41,11 @@ service = service.replace(broken, fixed)
 new_payload = base64.b64encode(service.encode('utf-8')).decode('ascii')
 installer = installer[:match.start('payload')] + new_payload + installer[match.end('payload'):]
 
-old_curl = 'response=$(curl --fail --silent --show-error --max-time 120 \\\\n'
-new_curl = 'response=$(curl --silent --show-error --max-time 120 \\\\n'
-if installer.count(old_curl) != 1:
-    raise SystemExit('ERROR: live probe curl anchor mismatch')
+old_curl = 'curl --fail --silent --show-error --max-time 120'
+new_curl = 'curl --silent --show-error --max-time 120'
+count = installer.count(old_curl)
+if count != 1:
+    raise SystemExit(f'ERROR: expected exactly one live probe curl option sequence, found {count}')
 installer = installer.replace(old_curl, new_curl, 1)
 
 old_py = '''body = json.loads(sys.argv[1])\nchoice = body["choices"][0]\n'''
